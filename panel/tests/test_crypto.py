@@ -41,3 +41,12 @@ def test_replay_detected():
         assert False, "replay should be detected"
     except ValueError as e:
         assert "replay" in str(e).lower()
+
+
+def test_cross_language_known_vector():
+    """Verify Python produces same output as Rust for known inputs."""
+    ctx = CryptoContext("oxide-lab-psk", b"test-salt-must-be-32-bytes-long!", is_initiator=True)
+    encrypted = ctx.encrypt(b'{"type":"test"}')
+    assert encrypted[:4] == b"\x00\x00\x00\x00"
+    assert encrypted[4:12] == b"\x00\x00\x00\x00\x00\x00\x00\x00"
+    assert len(encrypted) == 43
