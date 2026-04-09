@@ -5,9 +5,9 @@ from .listener import Listener
 from .handler import handle_client_session
 from .registry import Registry
 from .storage import init_db
+from .cli import run_cli
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger(__name__)
 
 PSK = "oxide-lab-psk"
 CERTS_DIR = Path(__file__).parent.parent.parent / "certs"
@@ -32,7 +32,10 @@ async def main():
         psk=PSK, salt=salt,
         on_client_connected=on_client,
     )
-    await listener.start()
+    await asyncio.gather(
+        listener.start(),
+        run_cli(registry),
+    )
 
 
 if __name__ == "__main__":
