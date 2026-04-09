@@ -1,0 +1,14 @@
+[project]
+name = "oxide-panel"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=44.0",
+    "aiosqlite>=0.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.setuptools.packages.find]
+include = ["panel*"]
