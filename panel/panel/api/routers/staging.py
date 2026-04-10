@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
@@ -92,7 +93,7 @@ async def fetch_stage(
 @router.post("/upload", response_model=StagingUploadResponse)
 async def upload_stage(
     current_user: CurrentUser,
-    stage_number: int = Form(..., ge=1, le=3),
+    stage_number: Optional[int] = Form(None),
     name: str = Form(...),
     description: str = Form(None),
     encryption_key_hint: str = Form(None),
