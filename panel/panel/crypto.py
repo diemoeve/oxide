@@ -45,3 +45,30 @@ class CryptoContext:
 
     def _make_nonce(self, counter: int) -> bytes:
         return self._direction_prefix + struct.pack("<Q", counter)
+
+
+import os as _os
+
+
+class StatelessCrypto:
+    """AES-256-GCM with random nonces. No replay protection. Use over HTTPS only."""
+
+    def __init__(self, psk: str, salt: bytes):
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=AES_KEY_SIZE,
+            salt=salt,
+            iterations=PBKDF2_ITERATIONS,
+        )
+        self._key = kdf.derive(psk.encode())
+
+    def encrypt(self, plaintext: bytes) -> bytes:
+        nonce = _os.urandom(NONCE_SIZE)
+        ct = AESGCM(self._key).encrypt(nonce, plaintext, None)
+        return nonce + ct
+
+    def decrypt(self, data: bytes) -> bytes:
+        if len(data) < NONCE_SIZE + 16:
+            raise ValueError("data too short")
+        nonce, ct = data[:NONCE_SIZE], data[NONCE_SIZE:]
+        return AESGCM(self._key).decrypt(nonce, ct, None)
