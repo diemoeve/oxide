@@ -39,9 +39,11 @@ impl PersistenceTrait for LaunchAgentPersistence {
         // Modern: bootstrap/bootout targeting gui/<uid>.
         let uid = nix::unistd::getuid().as_raw().to_string();
         let domain = format!("gui/{}", uid);
-        Command::new("launchctl")
-            .args(["bootstrap", &domain, path.to_str().unwrap_or("")])
+        let plist_str = path.to_str().ok_or_else(|| anyhow::anyhow!("non-UTF-8 plist path"))?;
+        let status = Command::new("launchctl")
+            .args(["bootstrap", &domain, plist_str])
             .status()?;
+        anyhow::ensure!(status.success(), "launchctl bootstrap failed");
         Ok(())
     }
 
@@ -49,9 +51,11 @@ impl PersistenceTrait for LaunchAgentPersistence {
         if let Ok(path) = plist_path() {
             let uid = nix::unistd::getuid().as_raw().to_string();
             let domain = format!("gui/{}", uid);
-            let _ = Command::new("launchctl")
-                .args(["bootout", &domain, path.to_str().unwrap_or("")])
-                .status();
+            if let Some(path_str) = path.to_str() {
+                let _ = Command::new("launchctl")
+                    .args(["bootout", &domain, path_str])
+                    .status();
+            }
             let _ = std::fs::remove_file(&path);
         }
         Ok(())

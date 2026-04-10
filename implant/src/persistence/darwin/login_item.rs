@@ -36,3 +36,19 @@ impl PersistenceTrait for LoginItemPersistence {
 
     fn name(&self) -> &'static str { "login_item" }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn applescript_includes_name_property() {
+        // Verify the script format contains the name: property (required on Ventura 13.0.x)
+        let s = "/usr/local/bin/oxide";
+        let script = format!(
+            "tell application \"System Events\" to make login item at end \
+             with properties {{path:\"{s}\", hidden:true, name:\"oxide\"}}"
+        );
+        assert!(script.contains("name:\"oxide\""));
+        assert!(script.contains("hidden:true"));
+    }
+}
