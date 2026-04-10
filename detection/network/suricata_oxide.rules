@@ -1,0 +1,82 @@
+# suricata_oxide.rules
+# Suricata detection rules for the oxide RAT C2 protocol.
+#
+# Verified syntax:
+#   - tls_sni keyword (underscore, NOT tls.sni which is invalid)
+#   - alert tls for TLS-layer rules
+#   - All rules include rev: field (required best practice)
+#
+# Validation:
+#   suricata -T -c /etc/suricata/suricata.yaml -s detection/network/suricata_oxide.rules
+#
+# MITRE ATT&CK: T1071.001, T1573.001
+
+# --- HIGH CONFIDENCE: SNI-based detection ---
+
+# Alert on the hardcoded SNI "oxide-c2" in TLS ClientHello.
+# SNI is transmitted in plaintext even in TLS 1.3.
+# Source: implant/src/transport.rs:37
+alert tls any any -> any any (
+    msg:"OXIDE RAT - C2 SNI oxide-c2 detected";
+    tls_sni;
+    content:"oxide-c2";
+    sid:9001001;
+    rev:1;
+    classtype:trojan-activity;
+    metadata:affected_product oxide-implant, attack_target Client_and_Server,
+             created_at 2026_04_10, mitre_tactic command-and-control,
+             mitre_technique T1071.001;
+)
+
+# --- MEDIUM CONFIDENCE: Default port ---
+
+# Alert on TLS connections to the oxide default C2 port 4444.
+# Port is configurable via OXIDE_C2_PORT; change this rule if port changes.
+# Source: implant/src/config.rs:31
+alert tls any any -> any 4444 (
+    msg:"OXIDE RAT - TLS connection to default C2 port 4444";
+    flow:established,to_server;
+    sid:9001002;
+    rev:1;
+    classtype:trojan-activity;
+    metadata:affected_product oxide-implant, attack_target Client_and_Server,
+             created_at 2026_04_10, mitre_tactic command-and-control,
+             mitre_technique T1071.001;
+)
+
+# --- MEDIUM CONFIDENCE: Reverse direction (panel → implant) ---
+
+# Alert on inbound TLS connections FROM port 4444 (responses from C2 panel).
+alert tls any 4444 -> any any (
+    msg:"OXIDE RAT - TLS response from C2 port 4444";
+    flow:established,to_client;
+    sid:9001003;
+    rev:1;
+    classtype:trojan-activity;
+    metadata:affected_product oxide-implant, attack_target Client_and_Server,
+             created_at 2026_04_10, mitre_tactic command-and-control,
+             mitre_technique T1071.001;
+)
+
+# --- LOW CONFIDENCE: Port 4444 any protocol ---
+
+# Catch non-TLS traffic to port 4444 (e.g., if implant is modified to skip TLS).
+alert tcp any any -> any 4444 (
+    msg:"OXIDE RAT - TCP connection to port 4444 (non-TLS variant)";
+    flow:established,to_server;
+    sid:9001004;
+    rev:1;
+    classtype:trojan-activity;
+    metadata:affected_product oxide-implant, attack_target Client_and_Server,
+             created_at 2026_04_10, mitre_tactic command-and-control,
+             mitre_technique T1071.001;
+)
+
+# --- NETWORK FORENSICS NOTE ---
+# The oxide wire protocol (4-byte LE length prefix + AES-256-GCM payload inside TLS)
+# cannot be detected by content rules because the payload is double-encrypted.
+# Traffic analysis approaches:
+#   1. JA3/JA4 fingerprinting (see ja3_fingerprints.md)
+#   2. Packet timing analysis (30s heartbeat intervals)
+#   3. Connection duration (persistent sessions lasting minutes to hours)
+#   4. Packet size patterns (small ~50-150 byte heartbeats, large ~500+ byte check-ins)

@@ -1,0 +1,68 @@
+title: Oxide RAT — C2 Beaconing over Long-Lived TLS Connection
+id: 1879203c-5678-4890-2123-oxide001c2001
+status: experimental
+description: >
+  Detects long-lived outbound TLS connection from a non-browser process to a
+  single IP on a non-standard port, consistent with oxide C2 beaconing.
+  The implant maintains a persistent TLS 1.3 connection to the panel on port 4444
+  (configurable via OXIDE_C2_PORT). Heartbeat interval: 30s (server-configured).
+  Reconnection: exponential backoff 1s-60s with ±25% jitter.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1573/001/
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+  - attack.t1573.001
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    Initiated: 'true'
+    DestinationPort|not:
+      - 80
+      - 443
+      - 22
+  filter_legitimate:
+    Image|contains:
+      - '/usr/bin/ssh'
+      - '/usr/bin/curl'
+      - '/usr/bin/wget'
+      - 'apt'
+      - 'dpkg'
+      - 'git'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Applications using non-standard ports; tune by known-good process list
+level: low
+
+---
+title: Oxide RAT — C2 on Default Port 4444 TLS
+id: 2980314d-6789-4901-3234-oxide001c2002
+status: experimental
+description: >
+  Detects outbound TLS connection to port 4444, the oxide C2 default port.
+  Source: implant/src/config.rs — default port 4444, override via OXIDE_C2_PORT.
+  This is a high-confidence indicator when port 4444 is not used by any
+  legitimate service in the environment.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1071/001/
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    DestinationPort: 4444
+    Initiated: 'true'
+  condition: selection
+falsepositives:
+  - Metasploit default listener port; other tools using 4444
+level: medium

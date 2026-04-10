@@ -1,0 +1,59 @@
+title: GENERIC — Windows Event Log Clearing
+id: 5213647g-9012-4234-6567-oxide001af001
+status: experimental
+description: >
+  GENERIC RULE — not directly implemented in oxide S1-S4.5.
+  Detects clearing of Windows event logs, a common anti-forensics technique.
+  Windows Security Event ID 1102 (audit log cleared) and
+  System Event ID 104 (log cleared) are the primary indicators.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1070/001/
+tags:
+  - attack.defense_evasion
+  - attack.t1070.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 1102
+  condition: selection
+falsepositives:
+  - Legitimate log management procedures; rare in endpoint contexts
+level: high
+
+---
+title: GENERIC — Timestomping via Touch or PowerShell
+id: 6324758h-0123-4345-7678-oxide001af002
+status: experimental
+description: >
+  GENERIC RULE — not directly implemented in oxide S1-S4.5.
+  Detects file timestamp modification commands used to hide implant installation
+  time. Patterns: `touch -t`, `touch -d`, or PowerShell SetLastWriteTime.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1070/006/
+tags:
+  - attack.defense_evasion
+  - attack.t1070.006
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_touch:
+    Image|endswith: '/touch'
+    CommandLine|contains|any:
+      - ' -t '
+      - ' -d '
+      - ' -r '
+  filter_legitimate:
+    ParentImage|contains:
+      - '/usr/bin/make'
+      - '/usr/bin/install'
+  condition: selection_touch and not filter_legitimate
+falsepositives:
+  - Build systems and Makefiles legitimately use touch; tune by parent process
+level: low

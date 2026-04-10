@@ -1,0 +1,36 @@
+title: GENERIC — Process Injection via Cross-Process Memory Write
+id: 4102536f-8901-4123-5456-oxide001pi001
+status: experimental
+description: >
+  GENERIC RULE — oxide-loader (S5) not yet implemented.
+  Detects cross-process memory write patterns consistent with process hollowing
+  or DLL injection. When oxide-loader is built, it will use one of these
+  injection techniques to deliver the implant without writing to disk.
+  Covers: WriteProcessMemory + CreateRemoteThread pattern (Windows),
+          ptrace POKE_DATA + CONT (Linux).
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1055/
+tags:
+  - attack.defense_evasion
+  - attack.t1055
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    GrantedAccess|contains:
+      - '0x1fffff'
+      - '0x1f0fff'
+      - '0x1f3fff'
+    CallTrace|contains: 'WriteProcessMemory'
+  filter_legitimate:
+    SourceImage|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+      - '\Program Files\Microsoft\Edge\'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Debuggers, security tools, and anti-cheat software using process access
+level: medium

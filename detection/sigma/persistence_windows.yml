@@ -1,0 +1,57 @@
+title: Oxide RAT — Windows Registry Run Key Persistence
+id: 0d6e7f80-4567-4def-1012-oxide001reg01
+status: experimental
+description: >
+  Detects creation of the OxideSystemUpdate value in the HKCU Run key.
+  The implant uses winreg to set:
+    HKCU\Software\Microsoft\Windows\CurrentVersion\Run\OxideSystemUpdate
+    = "%APPDATA%\Roaming\Microsoft\Update\oxide.exe"
+  Sysmon EID 13 (RegistrySet) captures this event.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: registry_event
+detection:
+  selection:
+    TargetObject|contains: '\CurrentVersion\Run\OxideSystemUpdate'
+  condition: selection
+falsepositives:
+  - None expected — highly specific registry value name
+level: high
+
+---
+title: Oxide RAT — Windows Scheduled Task Persistence
+id: 1e7f8091-5678-4ef0-2123-oxide001task1
+status: experimental
+description: >
+  Detects creation of the OxideSystemUpdate scheduled task via schtasks.
+  Exact command from implant code:
+    schtasks /create /f /sc onlogon /tn OxideSystemUpdate /tr <binary_path>
+  Note: no /rl highest (not elevated — runs as current user).
+  Sysmon EID 1 (ProcessCreate) with schtasks.exe and OxideSystemUpdate captures this.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+tags:
+  - attack.persistence
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\schtasks.exe'
+    CommandLine|contains|all:
+      - '/create'
+      - 'OxideSystemUpdate'
+  condition: selection
+falsepositives:
+  - None expected — highly specific task name
+level: high

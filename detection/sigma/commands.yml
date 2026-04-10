@@ -1,0 +1,271 @@
+title: Oxide RAT — Remote Shell Execution
+id: 4102b3c4-8901-4123-5456-oxide001sh001
+status: experimental
+description: >
+  Detects non-interactive /bin/sh -c invocations spawned by a non-shell parent process.
+  The oxide implant executes shell commands via:
+    Command::new("/bin/sh").arg("-c").arg(command_string)
+  This produces a /bin/sh process with parent = oxide-implant binary.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1059/004/
+tags:
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '/bin/sh'
+    CommandLine|contains: '-c'
+  filter_legitimate:
+    ParentImage|contains:
+      - '/bin/'
+      - '/usr/bin/'
+      - '/usr/local/bin/'
+      - 'sshd'
+      - 'cron'
+      - 'systemd'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Any process that spawns /bin/sh -c; tune ParentImage filter for environment
+level: low
+
+---
+title: Oxide RAT — File and Directory Discovery
+id: 5213c4d5-9012-4234-6567-oxide001fl001
+status: experimental
+description: >
+  Detects rapid directory listing by a non-browser, non-shell process.
+  The oxide file_list command handler reads directory contents and returns them.
+  Source: implant/src/commands/file_list.rs
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1083/
+tags:
+  - attack.discovery
+  - attack.t1083
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    file.path|startswith:
+      - '/home/'
+      - '/root/'
+      - '/etc/'
+      - '/tmp/'
+  filter_legitimate:
+    process.name:
+      - 'find'
+      - 'ls'
+      - 'bash'
+      - 'zsh'
+      - 'sh'
+      - 'rsync'
+      - 'backup'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Many legitimate processes access these paths; correlate with C2 network connection
+level: low
+
+---
+title: Oxide RAT — Data Exfiltration via C2 Channel
+id: 6324d5e6-0123-4345-7678-oxide001fd001
+status: experimental
+description: >
+  Detects large outbound data transfer over a persistent TLS connection
+  consistent with oxide file_download handler exfiltrating files.
+  The handler base64-encodes file content and sends it over the C2 channel.
+  Source: implant/src/commands/file_download.rs
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1041/
+tags:
+  - attack.exfiltration
+  - attack.t1041
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    Initiated: 'true'
+    DestinationPort|not:
+      - 80
+      - 443
+  filter_legitimate:
+    Image|contains:
+      - '/usr/bin/curl'
+      - '/usr/bin/wget'
+      - '/usr/bin/ssh'
+      - '/usr/bin/rsync'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Any application using non-standard outbound ports; combine with large transfer size
+level: low
+
+---
+title: Oxide RAT — Screen Capture
+id: 7435e6f7-1234-4456-8789-oxide001ss001
+status: experimental
+description: >
+  Detects the oxide screenshot handler: spawns scrot and writes output to
+  /tmp/.oxide_screenshot.png. Two indicators:
+  1. scrot process with output path argument
+  2. FileCreate event for /tmp/.oxide_screenshot.png
+  Source: implant/src/commands/screenshot.rs:11
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1113/
+tags:
+  - attack.collection
+  - attack.t1113
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '/scrot'
+    CommandLine|contains: '.oxide_screenshot.png'
+  condition: selection
+falsepositives:
+  - None expected — highly specific temp file path
+level: high
+
+---
+title: Oxide RAT — Screenshot Temp File Creation
+id: 7435e6f7-1234-4456-8789-oxide001ss002
+status: experimental
+description: >
+  Detects FileCreate event for /tmp/.oxide_screenshot.png.
+  This file is created by the oxide screenshot command handler.
+  Source: implant/src/commands/screenshot.rs:11
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1113/
+tags:
+  - attack.collection
+  - attack.t1113
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    file.path: '/tmp/.oxide_screenshot.png'
+  condition: selection
+falsepositives:
+  - None expected
+level: high
+
+---
+title: Oxide RAT — Process Discovery via /proc Enumeration
+id: 8546f708-2345-4567-9890-oxide001pl001
+status: experimental
+description: >
+  Detects high-frequency reads of /proc/<pid>/status and /proc/<pid>/cmdline
+  from a non-system process, consistent with the oxide process_list handler.
+  Source: implant/src/commands/process_list.rs
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1057/
+tags:
+  - attack.discovery
+  - attack.t1057
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    event.original|contains:
+      - '/proc/'
+    event.original|contains|any:
+      - '/status'
+      - '/cmdline'
+  filter_system:
+    event.original|contains:
+      - 'comm="ps"'
+      - 'comm="top"'
+      - 'comm="htop"'
+      - 'comm="systemd"'
+  condition: selection and not filter_system
+falsepositives:
+  - System monitoring tools, ps, top; tune via auditd comm field
+level: low
+
+---
+title: Oxide RAT — System Information Discovery at Startup
+id: 9657081a-3456-4678-0901-oxide001si001
+status: experimental
+description: >
+  Detects reads of /etc/machine-id and /etc/hostname at process startup,
+  consistent with the oxide check-in packet construction in checkin.rs.
+  The implant reads these files to build HWID and hostname fields.
+  Source: implant/src/platform/linux.rs, checkin.rs
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1082/
+tags:
+  - attack.discovery
+  - attack.t1082
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    event.original|contains:
+      - '/etc/machine-id'
+  filter_system:
+    event.original|contains:
+      - 'comm="systemd"'
+      - 'comm="dbus-daemon"'
+      - 'comm="NetworkManager"'
+  condition: selection and not filter_system
+falsepositives:
+  - Many legitimate processes read /etc/machine-id; correlate with subsequent network connection
+level: informational
+
+---
+title: Oxide RAT — Security Software Discovery
+id: 0768192b-4567-4789-1012-oxide001av001
+status: experimental
+description: >
+  Detects process enumeration targeting security tool names used by the oxide
+  implant to identify installed AV/EDR. The implant checks for these process names
+  in platform/linux.rs: clamd, freshclam, elastic-agent, osqueryd, falcon-sensor, cbagentd.
+  Source: implant/src/platform/linux.rs:45-50
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1518/001/
+tags:
+  - attack.discovery
+  - attack.t1518.001
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains|any:
+      - 'falcon-sensor'
+      - 'elastic-agent'
+      - 'cbagentd'
+      - 'clamd'
+      - 'osqueryd'
+  filter_legitimate:
+    Image|contains|any:
+      - 'systemctl'
+      - 'service'
+      - '/opt/falcon'
+      - '/opt/elastic'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - System administrators querying service status; correlate with preceding implant execution
+level: medium

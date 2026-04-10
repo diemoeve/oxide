@@ -1,0 +1,89 @@
+title: Oxide RAT — Linux Cron Persistence
+id: 7a3b4c5d-1234-4abc-8def-oxide001cron1
+status: experimental
+description: >
+  Detects cron @reboot entry pointing to the oxide RAT stable binary path
+  (~/.local/share/oxide/oxide-update). The implant installs this entry via
+  crontab -l | crontab - pattern. Artifact: @reboot line in user crontab.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+tags:
+  - attack.persistence
+  - attack.t1053.003
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains|all:
+      - 'crontab'
+      - '@reboot'
+  filter_legitimate:
+    CommandLine|contains:
+      - '/usr/bin'
+      - '/usr/local/bin'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Legitimate user cron jobs with @reboot entries
+  - System backup tools using cron
+level: medium
+
+---
+title: Oxide RAT — Linux Systemd User Service Persistence
+id: 8b4c5d6e-2345-4bcd-9ef0-oxide001sys01
+status: experimental
+description: >
+  Detects creation of the oxide RAT systemd user service file at
+  ~/.config/systemd/user/oxide-update.service. Service content includes
+  Description=System Update Service and Restart=on-failure.
+  NOTE: Linux file events use file.path, not TargetFilename (Windows field).
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1543/002/
+tags:
+  - attack.persistence
+  - attack.t1543.002
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    file.path|endswith: '/.config/systemd/user/oxide-update.service'
+  condition: selection
+falsepositives:
+  - None expected — highly specific path
+level: high
+
+---
+title: Oxide RAT — Linux Bash Profile Persistence
+id: 9c5d6e7f-3456-4cde-0f01-oxide001bash1
+status: experimental
+description: >
+  Detects modification of .bashrc or .bash_profile with the oxide persistence
+  marker comment (# oxide-persistence). The implant appends:
+    # oxide-persistence
+    /path/to/oxide-update &
+  NOTE: Linux file events use file.path, not TargetFilename (Windows field).
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1546/004/
+tags:
+  - attack.persistence
+  - attack.t1546.004
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_file:
+    file.path|endswith:
+      - '/.bashrc'
+      - '/.bash_profile'
+  condition: selection_file
+falsepositives:
+  - Legitimate .bashrc modifications by package managers or users
+  - Combine with content monitoring for "# oxide-persistence" to reduce FPs
+level: medium
