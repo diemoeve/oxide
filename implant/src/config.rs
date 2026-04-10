@@ -19,12 +19,10 @@ pub struct Config {
 impl Config {
     pub fn lab_default() -> Self {
         let salt_bytes = hex::decode(
-            std::fs::read_to_string("certs/salt.hex")
-                .expect("run lab-setup/gen_certs.sh first").trim()
+            include_str!("../../certs/salt.hex").trim()
         ).expect("invalid salt hex");
         let hash_bytes = hex::decode(
-            std::fs::read_to_string("certs/cert_hash.hex")
-                .expect("run lab-setup/gen_certs.sh first").trim()
+            include_str!("../../certs/cert_hash.hex").trim()
         ).expect("invalid cert hash hex");
         let mut cert_hash = [0u8; 32];
         cert_hash.copy_from_slice(&hash_bytes);
@@ -50,5 +48,21 @@ impl Config {
             user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
                          (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lab_default_loads_without_cwd_dependency() {
+        // include_str! is resolved at compile time — this test confirms
+        // the config builds and fields are populated regardless of CWD.
+        let cfg = Config::lab_default();
+        assert!(!cfg.host.is_empty());
+        assert!(cfg.port > 0);
+        assert_eq!(cfg.salt.len(), 32);
+        assert_eq!(cfg.cert_hash.len(), 32);
     }
 }
