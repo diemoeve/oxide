@@ -21,6 +21,7 @@ class EventType(Enum):
     RESPONSE_RECEIVED = "response_received"
     FILE_EXTRACTED = "file_extracted"
     SCREENSHOT_EXTRACTED = "screenshot_extracted"
+    STEAL_COMPLETED = "steal_completed"
 
 
 @dataclass
