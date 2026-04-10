@@ -5,5 +5,9 @@ pub mod systemd;
 pub mod bash_profile;
 
 pub fn get_chain() -> PersistenceChain {
-    PersistenceChain::new(vec![])  // temporary stub — backends added in Tasks 2-4
+    PersistenceChain::new(vec![
+        Box::new(cron::CronPersistence),
+        Box::new(systemd::SystemdPersistence),
+        Box::new(bash_profile::BashProfilePersistence),
+    ])
 }
