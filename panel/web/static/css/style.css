@@ -13,8 +13,8 @@
   --text-muted: #6e7681;
 
   --accent-primary: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-yellow: #d29922;
+  --accent-green: #0096c7;   /* blue — online (Okabe-Ito, CB-safe) */
+  --accent-yellow: #ee7c2b;  /* orange — stale (Okabe-Ito, CB-safe) */
   --accent-red: #f85149;
   --accent-purple: #a371f7;
 
@@ -297,6 +297,12 @@ a:hover {
 .btn-small {
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--font-size-xs);
+}
+
+.btn-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
 }
 
 /* Forms */
