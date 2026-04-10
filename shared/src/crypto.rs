@@ -20,13 +20,7 @@ pub struct CryptoContext {
 
 impl CryptoContext {
     pub fn new(psk: &str, salt: &[u8], is_initiator: bool) -> Self {
-        let mut key = [0u8; AES_KEY_SIZE];
-        pbkdf2::pbkdf2_hmac::<sha2::Sha256>(
-            psk.as_bytes(),
-            salt,
-            PBKDF2_ITERATIONS,
-            &mut key,
-        );
+        let key = derive_key(psk, salt);
         let cipher = Aes256Gcm::new_from_slice(&key)
             .expect("valid key size");
         let direction_prefix = if is_initiator {
