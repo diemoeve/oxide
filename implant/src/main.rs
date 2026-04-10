@@ -20,6 +20,10 @@ const RECONNECT_JITTER: f64 = 0.25;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install ring as the default rustls crypto provider. Required when both
+    // reqwest (ring) and tokio-tungstenite (aws-lc-rs) pull different backends.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let config = config::Config::lab_default();
 
     let mut dispatch = dispatcher::Dispatcher::new();

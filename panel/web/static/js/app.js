@@ -221,7 +221,8 @@ function handleWsEvent(event) {
 
 async function loadBots() {
   try {
-    const bots = await api.get('/api/bots');
+    const data = await api.get('/api/bots');
+    const bots = data.bots ?? data;
     state.bots = bots;
     renderBotGrid(bots);
     updateBotStats(bots);
