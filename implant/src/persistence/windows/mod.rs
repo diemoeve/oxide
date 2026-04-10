@@ -1,4 +1,4 @@
-use crate::persistence::{PersistenceChain, PersistenceTrait};
+use crate::persistence::PersistenceChain;
 pub mod registry;
 pub mod scheduled_task;
 pub mod dll_sideload;

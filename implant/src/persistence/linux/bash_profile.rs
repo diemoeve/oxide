@@ -100,4 +100,14 @@ mod tests {
     fn remove_block_unchanged_without_marker() {
         assert_eq!(remove_block("export PATH=$PATH\n"), "export PATH=$PATH\n");
     }
+
+    #[test]
+    fn remove_block_handles_double_install() {
+        // If install was called twice (double marker), remove_block removes both pairs
+        let c = "export PATH=$PATH\n# oxide-persistence\n/path/oxide &\n# oxide-persistence\n/path/oxide &\nalias ll='ls -la'\n";
+        let r = remove_block(c);
+        assert!(!r.contains("# oxide-persistence"));
+        assert!(!r.contains("/path/oxide"));
+        assert!(r.contains("alias ll"));
+    }
 }

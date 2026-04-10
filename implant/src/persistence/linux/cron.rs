@@ -10,15 +10,14 @@ fn entry_string(path: &Path) -> String {
 }
 
 fn entry_present(crontab: &str, path: &Path) -> bool {
-    let marker = path.to_str().unwrap_or("");
-    crontab.lines()
-        .any(|l| l.trim_start().starts_with("@reboot") && l.contains(marker))
+    let expected = format!("@reboot {}", path.display());
+    crontab.lines().any(|l| l.trim_end() == expected)
 }
 
 fn entry_removed(crontab: &str, path: &Path) -> String {
-    let marker = path.to_str().unwrap_or("");
+    let expected = format!("@reboot {}", path.display());
     let lines: Vec<&str> = crontab.lines()
-        .filter(|l| !(l.trim_start().starts_with("@reboot") && l.contains(marker)))
+        .filter(|l| l.trim_end() != expected)
         .collect();
     if lines.is_empty() { String::new() } else { lines.join("\n") + "\n" }
 }
@@ -108,5 +107,12 @@ mod tests {
     fn entry_removed_single_entry_gives_empty() {
         let tab = "@reboot /home/user/.local/share/oxide/oxide-update\n";
         assert_eq!(entry_removed(tab, Path::new("/home/user/.local/share/oxide/oxide-update")), "");
+    }
+
+    #[test]
+    fn entry_present_no_prefix_false_positive() {
+        // A path that is a prefix of the stable path should NOT match
+        let tab = "@reboot /home/user/.local/share/oxide/oxide-update-v2\n";
+        assert!(!entry_present(tab, Path::new("/home/user/.local/share/oxide/oxide-update")));
     }
 }

@@ -1,4 +1,4 @@
-use crate::persistence::{PersistenceChain, PersistenceTrait};
+use crate::persistence::PersistenceChain;
 pub mod launch_agent;
 pub mod login_item;
 

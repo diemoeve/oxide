@@ -10,9 +10,10 @@ impl PersistenceTrait for LoginItemPersistence {
         // Legacy AppleScript. Works on macOS <= 12 and macOS 13+ (old method still functional).
         // macOS 13+ shows a BTM notification to the user when registered.
         // name: property required on Ventura 13.0.x to avoid "login item UNKNOWN" error.
+        let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
         let script = format!(
             "tell application \"System Events\" to make login item at end \
-             with properties {{path:\"{s}\", hidden:true, name:\"oxide\"}}"
+             with properties {{path:\"{escaped}\", hidden:true, name:\"oxide\"}}"
         );
         let status = Command::new("osascript").args(["-e", &script]).status()?;
         anyhow::ensure!(status.success(), "osascript failed");

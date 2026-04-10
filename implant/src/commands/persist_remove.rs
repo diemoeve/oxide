@@ -23,6 +23,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "invokes live systemctl disable; run manually to verify"]
     fn persist_remove_returns_methods_array() {
         let result = PersistRemoveHandler.execute(Value::Null).unwrap();
         assert!(result["methods"].is_array());
