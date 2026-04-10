@@ -1,3 +1,4 @@
+mod persistence;
 mod config;
 mod transport;
 mod checkin;
