@@ -8,6 +8,7 @@ pub mod screenshot;
 pub mod process_list;
 pub mod persist_status;
 pub mod persist_remove;
+pub mod steal;
 
 pub trait CommandHandler: Send + Sync {
     fn execute(&self, args: Value) -> Result<Value>;

