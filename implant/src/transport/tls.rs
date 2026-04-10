@@ -8,7 +8,7 @@ use tokio_rustls::TlsConnector;
 
 use crate::config::Config;
 
-pub struct Transport {
+pub struct TlsTransport {
     reader: tokio::io::ReadHalf<tokio_rustls::client::TlsStream<TcpStream>>,
     writer: tokio::io::WriteHalf<tokio_rustls::client::TlsStream<TcpStream>>,
     crypto: CryptoContext,
@@ -16,7 +16,7 @@ pub struct Transport {
     last_recv_seq: Option<u64>,
 }
 
-impl Transport {
+impl TlsTransport {
     pub async fn connect(config: &Config) -> Result<Self> {
         let tcp = TcpStream::connect((&*config.host, config.port))
             .await
@@ -91,8 +91,8 @@ impl Transport {
 }
 
 #[derive(Debug)]
-struct PinnedCertVerifier {
-    expected_hash: [u8; 32],
+pub(crate) struct PinnedCertVerifier {
+    pub expected_hash: [u8; 32],
 }
 
 impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {

