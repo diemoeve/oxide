@@ -1,3 +1,4 @@
+#![allow(dead_code)] // public API consumed in Tasks 6-7 (main.rs wiring)
 use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "linux")]
