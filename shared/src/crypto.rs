@@ -85,6 +85,38 @@ impl CryptoContext {
     }
 }
 
+/// Derive a 32-byte AES-256 key from PSK + salt via PBKDF2-HMAC-SHA256.
+pub fn derive_key(psk: &str, salt: &[u8]) -> [u8; AES_KEY_SIZE] {
+    let mut key = [0u8; AES_KEY_SIZE];
+    pbkdf2::pbkdf2_hmac::<sha2::Sha256>(psk.as_bytes(), salt, PBKDF2_ITERATIONS, &mut key);
+    key
+}
+
+/// Encrypt with a fresh random 12-byte nonce. Output: `[nonce][ct+tag]`.
+/// No counter — safe for stateless HTTP (TLS handles replay prevention).
+pub fn encrypt_stateless(key: &[u8; AES_KEY_SIZE], plaintext: &[u8]) -> Vec<u8> {
+    use rand::RngCore;
+    let mut nonce_bytes = [0u8; NONCE_SIZE];
+    rand::thread_rng().fill_bytes(&mut nonce_bytes);
+    let cipher = Aes256Gcm::new_from_slice(key).expect("32-byte key");
+    let nonce = Nonce::from_slice(&nonce_bytes);
+    let ct = cipher.encrypt(nonce, plaintext).expect("encrypt");
+    let mut out = Vec::with_capacity(NONCE_SIZE + ct.len());
+    out.extend_from_slice(&nonce_bytes);
+    out.extend_from_slice(&ct);
+    out
+}
+
+/// Decrypt output of `encrypt_stateless`. Input: `[12-byte nonce][ct+tag]`.
+pub fn decrypt_stateless(key: &[u8; AES_KEY_SIZE], data: &[u8]) -> Result<Vec<u8>, CryptoError> {
+    if data.len() < NONCE_SIZE + 16 {
+        return Err(CryptoError::TooShort);
+    }
+    let nonce = Nonce::from_slice(&data[..NONCE_SIZE]);
+    let cipher = Aes256Gcm::new_from_slice(key).expect("32-byte key");
+    cipher.decrypt(nonce, &data[NONCE_SIZE..]).map_err(|_| CryptoError::DecryptFailed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,5 +177,41 @@ mod tests {
         let encrypted = ctx.encrypt(b"self-test");
         let nonce_prefix = &encrypted[..4];
         assert_eq!(nonce_prefix, &[0, 0, 0, 0]); // initiator prefix
+    }
+
+    #[test]
+    fn stateless_encrypt_decrypt_roundtrip() {
+        let key = derive_key("test-psk", b"test-salt-must-be-32-bytes-long!");
+        let ct = encrypt_stateless(&key, b"hello oxide");
+        assert_eq!(decrypt_stateless(&key, &ct).unwrap(), b"hello oxide");
+    }
+
+    #[test]
+    fn stateless_nonces_differ_per_call() {
+        let key = derive_key("test-psk", b"test-salt-must-be-32-bytes-long!");
+        let c1 = encrypt_stateless(&key, b"same");
+        let c2 = encrypt_stateless(&key, b"same");
+        assert_ne!(&c1[..NONCE_SIZE], &c2[..NONCE_SIZE]);
+    }
+
+    #[test]
+    fn stateless_wrong_key_fails() {
+        let k1 = derive_key("key1", b"test-salt-must-be-32-bytes-long!");
+        let k2 = derive_key("key2", b"test-salt-must-be-32-bytes-long!");
+        let ct = encrypt_stateless(&k1, b"secret");
+        assert!(decrypt_stateless(&k2, &ct).is_err());
+    }
+
+    #[test]
+    fn stateless_too_short_fails() {
+        let key = derive_key("k", b"test-salt-must-be-32-bytes-long!");
+        assert!(matches!(decrypt_stateless(&key, &[0u8; 10]), Err(CryptoError::TooShort)));
+    }
+
+    #[test]
+    fn derive_key_is_stable() {
+        let k1 = derive_key("psk", b"test-salt-must-be-32-bytes-long!");
+        let k2 = derive_key("psk", b"test-salt-must-be-32-bytes-long!");
+        assert_eq!(k1, k2);
     }
 }
