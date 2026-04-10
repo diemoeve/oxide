@@ -256,7 +256,7 @@ function renderBotGrid(bots) {
       el('td', {}, [bot.hostname || '-']),
       el('td', {}, [bot.os || '-']),
       el('td', {}, [bot.username || '-']),
-      el('td', {}, [bot.is_admin ? 'Admin' : 'User']),
+      el('td', {}, [bot.privileges || '-']),
       el('td', {}, [formatTime(bot.last_seen)])
     ]);
     tbody.appendChild(row);
@@ -285,8 +285,8 @@ async function loadBotDetail(hwid) {
 
   try {
     const bot = await api.get(`/api/bots/${hwid}`);
-    const commands = await api.get(`/api/commands?hwid=${hwid}&limit=20`);
-    renderBotDetail(bot, commands);
+    const cmdData = await api.get(`/api/bots/${hwid}/commands?limit=20`);
+    renderBotDetail(bot, cmdData.commands ?? cmdData);
   } catch (e) {
     showToast('Failed to load bot details: ' + e.message, 'error');
   }
@@ -319,7 +319,7 @@ function renderBotDetail(bot, commands) {
     ]),
     el('div', { className: 'info-item' }, [
       el('label', {}, ['Privileges']),
-      el('span', {}, [bot.is_admin ? 'Administrator' : 'Standard User'])
+      el('span', {}, [bot.privileges || '-'])
     ]),
     el('div', { className: 'info-item' }, [
       el('label', {}, ['First Seen']),
@@ -339,7 +339,7 @@ function renderBotDetail(bot, commands) {
     ]);
     const list = el('ul', {});
     for (const p of bot.persistence) {
-      list.appendChild(el('li', {}, [`${p.method}: ${p.location || 'active'}`]));
+      list.appendChild(el('li', {}, [`${p.method}: ${p.installed ? 'active' : 'inactive'}`]));
     }
     persistDiv.appendChild(list);
     panel.appendChild(persistDiv);
@@ -411,7 +411,7 @@ function renderBotDetail(bot, commands) {
     for (const cmd of commands) {
       tbody.appendChild(el('tr', {}, [
         el('td', {}, [formatTime(cmd.created_at)]),
-        el('td', {}, [cmd.command]),
+        el('td', {}, [cmd.command_type]),
         el('td', {}, [el('span', { className: `status-badge ${cmd.status}` }, [cmd.status])]),
         el('td', { className: 'response-cell' }, [truncate(cmd.response || '-', 50)])
       ]));
@@ -536,7 +536,8 @@ async function loadTasks() {
     const filter = document.getElementById('filter-status').value;
     let url = '/api/commands?limit=100';
     if (filter) url += `&status=${filter}`;
-    const tasks = await api.get(url);
+    const taskData = await api.get(url);
+    const tasks = taskData.commands ?? taskData;
     state.tasks = tasks;
     renderTasks(tasks);
   } catch (e) {
@@ -558,8 +559,8 @@ function renderTasks(tasks) {
   for (const task of tasks) {
     tbody.appendChild(el('tr', {}, [
       el('td', {}, [formatTime(task.created_at)]),
-      el('td', {}, [task.hwid.substring(0, 8)]),
-      el('td', {}, [task.command]),
+      el('td', {}, [(task.bot_hwid || task.hwid || '').substring(0, 8)]),
+      el('td', {}, [task.command_type || task.command]),
       el('td', {}, [truncate(task.args || '-', 30)]),
       el('td', {}, [el('span', { className: `status-badge ${task.status}` }, [task.status])]),
       el('td', { className: 'response-cell' }, [truncate(task.response || '-', 50)])
@@ -739,7 +740,8 @@ function downloadConfig() {
 
 function formatTime(isoString) {
   if (!isoString) return '-';
-  const date = new Date(isoString);
+  // API returns Unix timestamps as integers (seconds). JS Date expects ms.
+  const date = new Date(typeof isoString === 'number' ? isoString * 1000 : isoString);
   const now = new Date();
   const diffMs = now - date;
   const diffSec = Math.floor(diffMs / 1000);
