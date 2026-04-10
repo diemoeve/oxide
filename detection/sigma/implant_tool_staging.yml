@@ -1,0 +1,32 @@
+title: Oxide RAT — Implant Writes and Executes Tool Binary from Private Temp Dir
+id: a1b2c3d4-1234-5678-9abc-oxide008st001
+status: experimental
+description: >
+  Detects the oxide steal handler writing a binary to ~/.local/share/oxide/.tmp/<uuid>
+  and immediately executing it. The implant stages tool payloads (stealer, plugins)
+  downloaded from the C2 panel staging endpoint before subprocess execution.
+  Source: implant/src/commands/steal.rs (write_temp, run_subprocess)
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1059/004/
+tags:
+  - attack.command_and_control
+  - attack.t1105
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: linux
+  service: auditd
+detection:
+  write_to_oxide_tmp:
+    event.original|contains: '.local/share/oxide/.tmp/'
+    event.original|contains: 'syscall=openat'
+  exec_from_oxide_tmp:
+    event.original|contains: '.local/share/oxide/.tmp/'
+    event.original|contains: 'syscall=execve'
+  condition: write_to_oxide_tmp or exec_from_oxide_tmp
+falsepositives:
+  - None expected — path is oxide-specific and not used by legitimate software
+level: high
