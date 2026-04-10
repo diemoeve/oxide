@@ -28,6 +28,8 @@ class CommandType(str, Enum):
     PERSIST_STATUS = "persist_status"
     PERSIST_REMOVE = "persist_remove"
     STEAL = "steal"
+    SOCKS5_START = "socks5_start"
+    PORTFWD_ADD = "portfwd_add"
 
 
 class CommandStatus(str, Enum):

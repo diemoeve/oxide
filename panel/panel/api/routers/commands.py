@@ -4,10 +4,11 @@ import json
 import time
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from ...protocol import write_packet
 from ...storage import (
+    create_tunnel_session,
     get_bot,
     list_commands_with_responses,
     mark_command_dispatched,
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/api", tags=["commands"])
 async def send_command(
     hwid: str,
     body: CommandRequest,
+    request: Request,
     current_user: CurrentUser,
     registry: RegistryDep,
     event_bus: EventBusDep,
@@ -49,7 +51,30 @@ async def send_command(
         )
 
     cmd_id = str(uuid.uuid4())
-    args_json = json.dumps(body.args)
+    args = dict(body.args)  # mutable copy
+
+    # Tunnel commands: create session + inject session_id into args
+    command_type_value = body.command_type.value
+    if command_type_value == "socks5_start":
+        session_id = str(uuid.uuid4())
+        args["session_id"] = session_id
+        tunnel_mgr = request.app.state.tunnel_manager
+        await tunnel_mgr.create_session(session_id, "socks5")
+        await create_tunnel_session(session_id, hwid, "socks5")
+    elif command_type_value == "portfwd_add":
+        session_id = str(uuid.uuid4())
+        args["session_id"] = session_id
+        rhost = args.get("rhost", "")
+        rport = int(args.get("rport", 0))
+        lport = int(args.get("lport", 0))
+        tunnel_mgr = request.app.state.tunnel_manager
+        await tunnel_mgr.create_session(session_id, "portfwd",
+                                         remote_host=rhost, remote_port=rport,
+                                         local_port=lport)
+        await create_tunnel_session(session_id, hwid, "portfwd",
+                                    remote_host=rhost, remote_port=rport)
+
+    args_json = json.dumps(args)
 
     # Check if bot is connected
     conn = await registry.get(hwid)
@@ -62,14 +87,14 @@ async def send_command(
             "seq": 0,
             "timestamp": int(time.time()),
             "type": "command",
-            "data": {"command_type": body.command_type.value, "args": body.args},
+            "data": {"command_type": command_type_value, "args": args},
         }
 
         try:
             await write_packet(conn.writer, conn.crypto, packet)
             # Save as dispatched
             await save_command(
-                cmd_id, hwid, body.command_type.value, args_json,
+                cmd_id, hwid, command_type_value, args_json,
                 operator_id=current_user["id"], status="dispatched"
             )
             await mark_command_dispatched(cmd_id)
@@ -77,7 +102,7 @@ async def send_command(
             # Emit event
             await event_bus.publish(Event(
                 EventType.COMMAND_DISPATCHED,
-                {"command_id": cmd_id, "hwid": hwid, "command_type": body.command_type.value}
+                {"command_id": cmd_id, "hwid": hwid, "command_type": command_type_value}
             ))
 
             return CommandResponse(
@@ -91,14 +116,14 @@ async def send_command(
 
     # Bot offline - queue as pending
     await save_command(
-        cmd_id, hwid, body.command_type.value, args_json,
+        cmd_id, hwid, command_type_value, args_json,
         operator_id=current_user["id"], status="pending"
     )
 
     # Emit event
     await event_bus.publish(Event(
         EventType.COMMAND_QUEUED,
-        {"command_id": cmd_id, "hwid": hwid, "command_type": body.command_type.value}
+        {"command_id": cmd_id, "hwid": hwid, "command_type": command_type_value}
     ))
 
     return CommandResponse(
