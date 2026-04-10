@@ -232,3 +232,61 @@ class WSEvent(BaseModel):
     type: str
     data: dict
     timestamp: int
+
+
+# =============================================================================
+# Staging Schemas
+# =============================================================================
+
+
+class StagingPayload(BaseModel):
+    """Staging payload metadata (excludes blob for listing)."""
+    id: str
+    stage_number: int
+    name: str
+    description: str | None = None
+    encryption_key_hint: str | None = None
+    size: int
+    sha256: str
+    is_active: bool = True
+    created_at: int
+    created_by: str | None = None
+
+
+class StagingUploadRequest(BaseModel):
+    """Request to upload a staging payload."""
+    stage_number: int = Field(ge=1, le=3, description="Stage number (1, 2, or 3)")
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    encryption_key_hint: str | None = None
+
+
+class StagingUploadResponse(BaseModel):
+    """Response after uploading a staging payload."""
+    id: str
+    stage_number: int
+    name: str
+    size: int
+    sha256: str
+
+
+class StagingListResponse(BaseModel):
+    """List of staging payloads."""
+    payloads: list[StagingPayload]
+    total: int
+
+
+class StagingRequest(BaseModel):
+    """Staging request log entry."""
+    id: str
+    payload_id: str
+    client_ip: str | None = None
+    user_agent: str | None = None
+    requested_at: int
+    served: bool = True
+
+
+class StagingRequestListResponse(BaseModel):
+    """List of staging requests."""
+    requests: list[StagingRequest]
+    total: int

