@@ -261,14 +261,30 @@ async def run_migrations():
             continue
         migration = MIGRATIONS[version]
         logger.info(f"Applying migration {version}: {migration['description']}")
-        for sql in migration["up"]:
+
+        # Separate pragma statements from DDL/DML statements.
+        # PRAGMAs cannot run inside a transaction in SQLite.
+        pragma_stmts = [s for s in migration["up"] if s.strip().upper().startswith("PRAGMA")]
+        data_stmts = [s for s in migration["up"] if not s.strip().upper().startswith("PRAGMA")]
+
+        # Run pragmas outside transaction
+        for sql in pragma_stmts:
             await db.execute(sql)
-        await db.execute(
-            "INSERT INTO schema_version (version, applied_at, description) VALUES (?, ?, ?)",
-            (version, int(time.time()), migration["description"]),
-        )
-        await db.commit()
-        logger.info(f"Migration {version} applied successfully")
+
+        # Run DDL/DML atomically
+        await db.execute("BEGIN")
+        try:
+            for sql in data_stmts:
+                await db.execute(sql)
+            await db.execute(
+                "INSERT INTO schema_version (version, applied_at, description) VALUES (?, ?, ?)",
+                (version, int(time.time()), migration["description"]),
+            )
+            await db.execute("COMMIT")
+        except Exception:
+            await db.execute("ROLLBACK")
+            raise
+        logger.info(f"Migration {version} applied")
 
 
 async def init_db():
