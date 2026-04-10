@@ -1,0 +1,56 @@
+title: Oxide RAT — WebSocket Tunnel to /c2/tunnel/
+id: 4b02536f-8901-6123-5456-oxide010ws001
+status: experimental
+description: >
+  Detects HTTP Upgrade to WebSocket targeting /c2/tunnel/ from a non-browser
+  process. Implant opens WS after receiving socks5_start or portfwd_add command.
+  Source: implant/src/tunnel_client.rs (run_tunnel), connects to
+  wss://panel:443/c2/tunnel/{socks5|portfwd}/{uuid}.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1090/
+  - https://attack.mitre.org/techniques/T1071/001/
+tags:
+  - attack.command_and_control
+  - attack.t1090
+  - attack.t1071.001
+logsource:
+  product: zeek
+  service: http
+detection:
+  selection:
+    method: GET
+    uri|contains: '/c2/tunnel/'
+  condition: selection
+falsepositives:
+  - Legitimate WebSocket apps using /c2/tunnel/ path
+level: high
+
+---
+title: Oxide RAT — SOCKS5 Local Listener (Auto-Allocated Port 30000+)
+id: 4b02536f-8901-6123-5456-oxide010ws002
+status: experimental
+description: >
+  Detects connections to localhost ports 30000-31000 opened by the oxide panel
+  as SOCKS5 listeners for active tunnel sessions. Source: panel/panel/tunnel.py
+  (_PORT_BASE = 30000). Indicates lateral movement via SOCKS5 proxy.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1090/
+tags:
+  - attack.command_and_control
+  - attack.t1090
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    DestinationPort|gte: 30000
+    DestinationPort|lt: 31000
+    DestinationIp: '127.0.0.1'
+  condition: selection
+falsepositives:
+  - Other tools using port range 30000-31000; tune by known-good process
+level: medium

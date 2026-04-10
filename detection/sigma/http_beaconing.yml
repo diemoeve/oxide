@@ -1,0 +1,63 @@
+title: Oxide RAT — HTTP Beacon (Periodic POST to /c2/beacon)
+id: 3a91425e-7890-5012-4345-oxide010hb001
+status: experimental
+description: >
+  Detects periodic HTTPS POST requests consistent with oxide HTTP-mode beaconing.
+  Implant posts to /c2/beacon every 30s ±25% jitter with a hardcoded Chrome
+  User-Agent. Source: implant/src/config.rs (user_agent, beacon_interval fields).
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1573/001/
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+  - attack.t1573.001
+logsource:
+  product: zeek
+  service: http
+detection:
+  selection:
+    method: POST
+    uri|contains: '/c2/beacon'
+  condition: selection
+falsepositives:
+  - Applications using /c2/beacon path (unlikely)
+level: medium
+
+---
+title: Oxide RAT — Non-Browser HTTPS Outbound (Sysmon/auditd)
+id: 3a91425e-7890-5012-4345-oxide010hb002
+status: experimental
+description: >
+  Detects non-browser process making outbound HTTPS connections to port 443.
+  Oxide HttpTransport uses a Chrome User-Agent (implant/src/config.rs) but
+  the binary is not a browser. Enrich with connection frequency.
+author: diemoeve
+date: 2026/04/10
+references:
+  - https://attack.mitre.org/techniques/T1071/001/
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    Initiated: 'true'
+    DestinationPort: 443
+  filter_browsers:
+    Image|contains:
+      - 'chrome'
+      - 'firefox'
+      - 'chromium'
+      - 'brave'
+      - 'electron'
+      - 'curl'
+      - 'wget'
+  condition: selection and not filter_browsers
+falsepositives:
+  - Any non-browser HTTPS client; tune by known-good process list
+level: low

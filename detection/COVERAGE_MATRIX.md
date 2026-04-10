@@ -30,6 +30,9 @@ ATT&CK technique mapping for all components across S1-S8.
 | T1027 | Obfuscated Files/Information | oxide-loader encrypted stages | oxide-loader/detection/yara/stage1_xor.yar | validated |
 | T1059.004 | Subprocess Spawn for Stealer | implant → oxide-stealer | detection/sigma/implant_stealer_subprocess.yml | validated |
 | T1497 | Virtualization/Sandbox Evasion | oxide-loader stage2 | (behavioural — timing/ptrace checks) | pending rule |
+| T1090 | Proxy — SOCKS5 pivot via WS tunnel | implant socks5_start + panel TunnelManager | detection/sigma/ws_tunnel.yml | validated |
+| T1090 | Proxy — port forward via WS tunnel | implant portfwd_add + panel TunnelManager | detection/sigma/ws_tunnel.yml | validated |
+| T1071.001 | App Layer Protocol: HTTP beacon | implant HTTP transport (/c2/beacon) | detection/sigma/http_beaconing.yml | validated |
 
 ## YARA Rules
 
