@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxide C2 - Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="dashboard">
+  <!-- Top Navigation -->
+  <nav class="top-nav">
+    <div class="nav-brand">OXIDE</div>
+    <ul class="nav-links">
+      <li><a href="#bots" class="nav-link active" data-page="bots">Bots</a></li>
+      <li><a href="#tasks" class="nav-link" data-page="tasks">Tasks</a></li>
+      <li><a href="#downloads" class="nav-link" data-page="downloads">Downloads</a></li>
+      <li><a href="#screenshots" class="nav-link" data-page="screenshots">Screenshots</a></li>
+      <li><a href="#builder" class="nav-link" data-page="builder">Builder</a></li>
+    </ul>
+    <div class="nav-status">
+      <span id="ws-status" class="status-dot offline"></span>
+      <span id="ws-status-text">Disconnected</span>
+    </div>
+    <button id="logout-btn" class="btn btn-small btn-secondary">Logout</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Bots Page -->
+    <section id="page-bots" class="page active">
+      <div class="page-header">
+        <h2>Implants</h2>
+        <div class="stats-bar">
+          <span class="stat"><span id="stat-online">0</span> online</span>
+          <span class="stat"><span id="stat-stale">0</span> stale</span>
+          <span class="stat"><span id="stat-offline">0</span> offline</span>
+        </div>
+      </div>
+      <div class="bots-layout" id="bots-layout">
+        <div class="bot-grid-container">
+          <table id="bot-grid" class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">Status</th>
+                <th>HWID</th>
+                <th>Hostname</th>
+                <th>OS</th>
+                <th>User</th>
+                <th>Privileges</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="bot-grid-body">
+              <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <aside id="bot-detail" class="detail-panel" hidden></aside>
+      </div>
+    </section>
+
+    <!-- Tasks Page -->
+    <section id="page-tasks" class="page">
+      <div class="page-header">
+        <h2>Task Log</h2>
+        <div class="filters">
+          <select id="filter-status">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="dispatched">Dispatched</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button id="refresh-tasks" class="btn btn-small btn-secondary">Refresh</button>
+        </div>
+      </div>
+      <table id="task-log" class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Bot</th>
+            <th>Command</th>
+            <th>Args</th>
+            <th>Status</th>
+            <th>Response</th>
+          </tr>
+        </thead>
+        <tbody id="task-log-body">
+          <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Downloads Page -->
+    <section id="page-downloads" class="page">
+      <div class="page-header">
+        <h2>Downloads</h2>
+        <button id="refresh-downloads" class="btn btn-small btn-secondary">Refresh</button>
+      </div>
+      <table id="downloads-list" class="data-table">
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Bot</th>
+            <th>Remote Path</th>
+            <th>Size</th>
+            <th>Downloaded</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="downloads-body">
+          <tr><td colspan="6" class="empty-state">No downloads yet</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Screenshots Page -->
+    <section id="page-screenshots" class="page">
+      <div class="page-header">
+        <h2>Screenshots</h2>
+        <button id="refresh-screenshots" class="btn btn-small btn-secondary">Refresh</button>
+      </div>
+      <div id="screenshot-grid" class="screenshot-grid">
+        <div class="empty-state">No screenshots yet</div>
+      </div>
+      <div id="screenshot-modal" class="modal" hidden>
+        <div class="modal-content">
+          <button class="modal-close">&times;</button>
+          <img id="screenshot-full" src="" alt="Screenshot">
+        </div>
+      </div>
+    </section>
+
+    <!-- Builder Page -->
+    <section id="page-builder" class="page">
+      <div class="page-header">
+        <h2>Implant Builder</h2>
+      </div>
+      <form id="builder-form" class="builder-form">
+        <div class="form-group">
+          <label for="c2-host">C2 Host</label>
+          <input type="text" id="c2-host" name="c2_host" value="127.0.0.1" required>
+        </div>
+        <div class="form-group">
+          <label for="c2-port">C2 Port</label>
+          <input type="number" id="c2-port" name="c2_port" value="4444" min="1" max="65535" required>
+        </div>
+        <div class="form-group">
+          <label for="c2-psk">Pre-shared Key</label>
+          <input type="text" id="c2-psk" name="psk" value="oxide-lab-psk" required>
+        </div>
+        <div class="form-group">
+          <label for="c2-salt">Salt (hex)</label>
+          <input type="text" id="c2-salt" name="salt_hex" placeholder="32-byte hex">
+        </div>
+        <div class="form-group">
+          <label for="c2-cert-hash">Certificate Hash (hex)</label>
+          <input type="text" id="c2-cert-hash" name="cert_hash_hex" placeholder="SHA-256 hex">
+        </div>
+        <div class="form-group">
+          <label for="c2-interval">Heartbeat Interval (seconds)</label>
+          <input type="number" id="c2-interval" name="heartbeat_interval" value="30" min="5" max="3600">
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Config</button>
+      </form>
+      <div id="builder-output" hidden>
+        <h4>Generated Configuration</h4>
+        <pre id="config-json"></pre>
+        <button id="download-config" class="btn btn-secondary">Download JSON</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

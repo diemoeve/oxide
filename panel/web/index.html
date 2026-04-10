@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxide C2 - Login</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <h1 class="logo">OXIDE</h1>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+      <div id="login-error" class="error-message" hidden></div>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+    </form>
+    <p style="margin-top: 16px; text-align: center; color: var(--text-muted); font-size: var(--font-size-sm);">
+      Default: admin / oxide
+    </p>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('login-error');
+      errorEl.hidden = true;
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const resp = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+          // Store token for WebSocket auth
+          localStorage.setItem('oxide_token', data.token);
+          window.location.href = '/dashboard.html';
+        } else {
+          errorEl.textContent = data.detail || 'Login failed';
+          errorEl.hidden = false;
+        }
+      } catch (err) {
+        errorEl.textContent = 'Connection error';
+        errorEl.hidden = false;
+      }
+    });
+
+    // Check if already logged in
+    (async () => {
+      try {
+        const resp = await fetch('/api/auth/me');
+        if (resp.ok) {
+          window.location.href = '/dashboard.html';
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

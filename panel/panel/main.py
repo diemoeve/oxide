@@ -1,41 +1,89 @@
+import argparse
 import asyncio
 import logging
 from pathlib import Path
-from .listener import Listener
+
+import uvicorn
+
+from .api.app import create_app
+from .api.auth import ensure_admin_exists
+from .api.events import EventBus
+from .cli import run_cli
 from .handler import handle_client_session
+from .listener import Listener
 from .registry import Registry
 from .storage import init_db
-from .cli import run_cli
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
 
 PSK = "oxide-lab-psk"
 CERTS_DIR = Path(__file__).parent.parent.parent / "certs"
-registry = Registry()
 
 
 def load_salt() -> bytes:
     return bytes.fromhex((CERTS_DIR / "salt.hex").read_text().strip())
 
 
-async def on_client(reader, writer, crypto, addr):
-    await handle_client_session(reader, writer, crypto, addr, registry)
-
-
 async def main():
+    parser = argparse.ArgumentParser(description="Oxide C2 Panel")
+    parser.add_argument("--cli", action="store_true", help="Run CLI interface instead of web panel")
+    parser.add_argument("--web-host", default="0.0.0.0", help="Web panel bind address")
+    parser.add_argument("--web-port", type=int, default=8080, help="Web panel port")
+    parser.add_argument("--c2-host", default="0.0.0.0", help="C2 listener bind address")
+    parser.add_argument("--c2-port", type=int, default=4444, help="C2 listener port")
+    args = parser.parse_args()
+
+    # Initialize database
     await init_db()
+    await ensure_admin_exists()
+
+    # Create shared components
+    registry = Registry()
+    event_bus = EventBus()
     salt = load_salt()
+
+    # Client connection handler with event bus
+    async def on_client(reader, writer, crypto, addr):
+        await handle_client_session(reader, writer, crypto, addr, registry, event_bus)
+
+    # Create TLS listener
     listener = Listener(
-        host="0.0.0.0", port=4444,
+        host=args.c2_host,
+        port=args.c2_port,
         cert_path=str(CERTS_DIR / "server.crt"),
         key_path=str(CERTS_DIR / "server.key"),
-        psk=PSK, salt=salt,
+        psk=PSK,
+        salt=salt,
         on_client_connected=on_client,
     )
-    await asyncio.gather(
-        listener.start(),
-        run_cli(registry),
-    )
+
+    if args.cli:
+        # CLI mode - run listener and CLI
+        logger.info(f"Starting Oxide C2 (CLI mode) - C2 on {args.c2_host}:{args.c2_port}")
+        await asyncio.gather(
+            listener.start(),
+            run_cli(registry),
+        )
+    else:
+        # Web mode - run listener and FastAPI
+        logger.info(f"Starting Oxide C2 - Web on {args.web_host}:{args.web_port}, C2 on {args.c2_host}:{args.c2_port}")
+        app = create_app(registry, event_bus)
+
+        # Configure uvicorn to share the event loop
+        config = uvicorn.Config(
+            app,
+            host=args.web_host,
+            port=args.web_port,
+            loop="none",  # Use existing event loop
+            log_level="info",
+        )
+        server = uvicorn.Server(config)
+
+        await asyncio.gather(
+            listener.start(),
+            server.serve(),
+        )
 
 
 if __name__ == "__main__":
