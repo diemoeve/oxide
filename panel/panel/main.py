@@ -32,6 +32,10 @@ async def main():
     parser.add_argument("--web-port", type=int, default=8080, help="Web panel port")
     parser.add_argument("--c2-host", default="0.0.0.0", help="C2 listener bind address")
     parser.add_argument("--c2-port", type=int, default=4444, help="C2 listener port")
+    parser.add_argument("--http-c2", action="store_true",
+                        help="Enable HTTPS on uvicorn for HTTP-mode implants")
+    parser.add_argument("--http-c2-port", type=int, default=443,
+                        help="HTTPS port for HTTP-mode implants (default 443)")
     args = parser.parse_args()
 
     # Initialize database
@@ -74,8 +78,10 @@ async def main():
         config = uvicorn.Config(
             app,
             host=args.web_host,
-            port=args.web_port,
-            loop="none",  # Use existing event loop
+            port=args.http_c2_port if args.http_c2 else args.web_port,
+            ssl_certfile=str(CERTS_DIR / "server.crt") if args.http_c2 else None,
+            ssl_keyfile=str(CERTS_DIR / "server.key") if args.http_c2 else None,
+            loop="none",
             log_level="info",
         )
         server = uvicorn.Server(config)
