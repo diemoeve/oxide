@@ -22,9 +22,17 @@ impl Config {
         let mut cert_hash = [0u8; 32];
         cert_hash.copy_from_slice(&hash_bytes);
 
+        // Allow override via environment variables for integration testing
+        let host = std::env::var("OXIDE_C2_HOST")
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port = std::env::var("OXIDE_C2_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(4444);
+
         Self {
-            host: "127.0.0.1".to_string(),
-            port: 4444,
+            host,
+            port,
             psk: "oxide-lab-psk".to_string(),
             salt: salt_bytes,
             cert_hash,

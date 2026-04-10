@@ -1,0 +1,12 @@
+<network>
+  <name>oxide-testnet</name>
+  <bridge name="virbr-oxide" stp="on" delay="0"/>
+  <ip address="10.10.100.1" netmask="255.255.255.0">
+    <dhcp>
+      <range start="10.10.100.50" end="10.10.100.100"/>
+      <host mac="52:54:00:00:c2:01" ip="10.10.100.10"/>
+      <host mac="52:54:00:00:a1:01" ip="10.10.100.11"/>
+      <host mac="52:54:00:00:a2:01" ip="10.10.100.12"/>
+    </dhcp>
+  </ip>
+</network>

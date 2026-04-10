@@ -8,3 +8,9 @@
 *.key
 salt.hex
 .venv/
+.claude/
+
+# VM test infrastructure
+/vm-images/
+*.qcow2
+*-domain.xml
