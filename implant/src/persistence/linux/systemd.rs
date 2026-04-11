@@ -4,7 +4,7 @@ use std::process::Command;
 
 pub struct SystemdPersistence;
 
-const SERVICE_NAME: &str = "oxide-update.service";
+const SERVICE_NAME: &str = "sys-update.service";
 
 fn unit_dir() -> anyhow::Result<std::path::PathBuf> {
     let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME not set"))?;
@@ -90,6 +90,6 @@ mod tests {
 
     #[test]
     fn service_name_constant() {
-        assert_eq!(SERVICE_NAME, "oxide-update.service");
+        assert_eq!(SERVICE_NAME, "sys-update.service");
     }
 }

