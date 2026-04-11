@@ -23,8 +23,11 @@ from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
-CMD_CONNECT = 0x01; CMD_DATA = 0x02; CMD_CLOSE = 0x03
-CMD_CONNECTED = 0x04; CMD_ERROR = 0x05
+CMD_CONNECT = 0x01
+CMD_DATA = 0x02
+CMD_CLOSE = 0x03
+CMD_CONNECTED = 0x04
+CMD_ERROR = 0x05
 _PORT_BASE = 30000  # Auto-allocate SOCKS5/portfwd ports from here
 
 
@@ -52,7 +55,9 @@ class TunnelSession:
     _next_id: int = 1
 
     def alloc_conn_id(self):
-        cid = self._next_id; self._next_id += 1; return cid
+        cid = self._next_id
+        self._next_id += 1
+        return cid
 
 
 class TunnelManager:
@@ -62,7 +67,9 @@ class TunnelManager:
         self._port_counter = _PORT_BASE
 
     def _alloc_port(self):
-        p = self._port_counter; self._port_counter += 1; return p
+        p = self._port_counter
+        self._port_counter += 1
+        return p
 
     async def create_session(self, session_id, tunnel_type,
                               remote_host="", remote_port=0, local_port=0):
@@ -87,13 +94,15 @@ class TunnelManager:
         return sess
 
     async def _start_socks5(self, sess):
-        port = self._alloc_port(); sess.local_port = port
+        port = self._alloc_port()
+        sess.local_port = port
         sess.server = await asyncio.start_server(
             lambda r, w: self._socks5_client(r, w, sess), "127.0.0.1", port)
         logger.info(f"SOCKS5 on 127.0.0.1:{port} session={sess.session_id[:8]}")
 
     async def _start_portfwd(self, sess):
-        port = sess.local_port or self._alloc_port(); sess.local_port = port
+        port = sess.local_port or self._alloc_port()
+        sess.local_port = port
         sess.server = await asyncio.start_server(
             lambda r, w: self._portfwd_client(r, w, sess), "127.0.0.1", port)
         logger.info(f"PortFwd 127.0.0.1:{port} → {sess.remote_host}:{sess.remote_port}")
@@ -102,13 +111,17 @@ class TunnelManager:
         conn_id = sess.alloc_conn_id()
         try:
             hdr = await reader.readexactly(2)
-            if hdr[0] != 0x05: return
+            if hdr[0] != 0x05:
+                return
             await reader.readexactly(hdr[1])
-            writer.write(b"\x05\x00"); await writer.drain()
+            writer.write(b"\x05\x00")
+            await writer.drain()
 
             req = await reader.readexactly(4)
             if req[1] != 0x01:
-                writer.write(b"\x05\x07\x00\x01" + b"\x00"*6); await writer.drain(); return
+                writer.write(b"\x05\x07\x00\x01" + b"\x00"*6)
+                await writer.drain()
+                return
 
             atyp = req[3]
             if atyp == 0x01:
@@ -117,14 +130,17 @@ class TunnelManager:
                 n = (await reader.readexactly(1))[0]
                 host = (await reader.readexactly(n)).decode()
             else:
-                writer.write(b"\x05\x08\x00\x01" + b"\x00"*6); await writer.drain(); return
+                writer.write(b"\x05\x08\x00\x01" + b"\x00"*6)
+                await writer.drain()
+                return
 
             port = struct.unpack(">H", await reader.readexactly(2))[0]
             await self._relay_client(reader, writer, sess, conn_id, f"{host}:{port}", socks5=True)
         except Exception as e:
             logger.debug(f"SOCKS5 conn {conn_id}: {e}")
         finally:
-            sess.connections.pop(conn_id, None); writer.close()
+            sess.connections.pop(conn_id, None)
+            writer.close()
 
     async def _portfwd_client(self, reader, writer, sess):
         conn_id = sess.alloc_conn_id()
@@ -134,7 +150,8 @@ class TunnelManager:
         except Exception as e:
             logger.debug(f"PortFwd conn {conn_id}: {e}")
         finally:
-            sess.connections.pop(conn_id, None); writer.close()
+            sess.connections.pop(conn_id, None)
+            writer.close()
 
     async def _relay_client(self, reader, writer, sess, conn_id, target, socks5):
         ev = asyncio.Event()
@@ -147,38 +164,48 @@ class TunnelManager:
             await writer.drain()
         while True:
             data = await reader.read(4096)
-            if not data: break
+            if not data:
+                break
             if sess.ws:
                 await sess.ws.send_bytes(_enc(CMD_DATA, conn_id, data))
         if sess.ws:
-            try: await sess.ws.send_bytes(_enc(CMD_CLOSE, conn_id))
-            except Exception: pass
+            try:
+                await sess.ws.send_bytes(_enc(CMD_CLOSE, conn_id))
+            except Exception:
+                pass
 
     async def relay_from_implant(self, session_id, data):
         async with self._lock:
             sess = self._sessions.get(session_id)
-        if not sess: return
+        if not sess:
+            return
         try:
             cmd, conn_id, payload = _dec(data)
         except ValueError as e:
-            logger.warning(f"Bad WS frame: {e}"); return
+            logger.warning(f"Bad WS frame: {e}")
+            return
 
         entry = sess.connections.get(conn_id)
-        if not entry: return
+        if not entry:
+            return
         _, writer, ev = entry
 
         if cmd == CMD_CONNECTED:
             ev.set()
         elif cmd == CMD_DATA:
-            writer.write(payload); await writer.drain()
+            writer.write(payload)
+            await writer.drain()
         elif cmd in (CMD_CLOSE, CMD_ERROR):
-            ev.set(); writer.close(); sess.connections.pop(conn_id, None)
+            ev.set()
+            writer.close()
+            sess.connections.pop(conn_id, None)
 
     async def close_session(self, session_id):
         async with self._lock:
             sess = self._sessions.pop(session_id, None)
         if sess and sess.server:
-            sess.server.close(); await sess.server.wait_closed()
+            sess.server.close()
+            await sess.server.wait_closed()
         logger.info(f"Tunnel {session_id[:8]} closed")
 
     def get_session(self, session_id):
