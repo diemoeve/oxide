@@ -71,7 +71,7 @@ pub(crate) fn validate_sha256(bytes: &[u8], expected: &str) -> Result<()> {
 
 fn write_temp(bytes: &[u8]) -> Result<String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let tmp_dir = std::path::Path::new(&home).join(".local/share/oxide/.tmp");
+    let tmp_dir = std::path::Path::new(&home).join(".local/share/.sysmon/.tmp");
     fs::create_dir_all(&tmp_dir).context("create temp dir")?;
     let path = tmp_dir.join(Uuid::new_v4().to_string());
     fs::write(&path, bytes).context("write temp binary")?;
