@@ -3,6 +3,9 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub enum TransportMode {
     Tls,
+    // Used by http-transport feature (transport/http.rs). Clippy sees this
+    // as dead without --features http-transport.
+    #[allow(dead_code)]
     Http,
 }
 
@@ -13,9 +16,15 @@ pub struct Config {
     pub psk: String,
     pub salt: Vec<u8>,
     pub cert_hash: [u8; 32],
+    // Fields below are read in transport/http.rs under --features http-transport.
+    // Suppress rather than cfg-gate (cfg on struct fields changes layout between builds).
+    #[allow(dead_code)]
     pub transport: TransportMode,
+    #[allow(dead_code)]
     pub beacon_interval: Duration,
+    #[allow(dead_code)]
     pub beacon_jitter: f64,
+    #[allow(dead_code)]
     pub user_agent: String,
 }
 
