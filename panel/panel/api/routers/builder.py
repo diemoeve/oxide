@@ -1,6 +1,5 @@
 """Builder router for generating implant configurations."""
 
-import json
 from pathlib import Path
 
 from fastapi import APIRouter

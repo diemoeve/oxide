@@ -1,7 +1,6 @@
 """Database storage layer with schema migrations and connection pooling."""
 
 import asyncio
-import hashlib
 import json
 import logging
 import sqlite3

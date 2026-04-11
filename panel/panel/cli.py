@@ -3,7 +3,7 @@ import json
 import time
 import uuid
 from .registry import Registry
-from .storage import list_bots, save_command
+from .storage import save_command
 
 COMMANDS = {
     "shell": "Execute a shell command",
@@ -94,6 +94,6 @@ async def run_cli(registry: Registry):
             if sent:
                 print(f"Command sent (id={cmd_id[:8]}). Watch logs for response.")
             else:
-                print(f"Failed to send (bot disconnected?)")
+                print("Failed to send (bot disconnected?)")
         else:
             print(f"Unknown command: {cmd}. Available: bots, use, {', '.join(COMMANDS)}, quit")

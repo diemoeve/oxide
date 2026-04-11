@@ -110,7 +110,7 @@ async def send_command(
                 status=CommandStatus.DISPATCHED,
                 queued=False,
             )
-        except Exception as e:
+        except Exception:
             # Connection failed, queue instead
             is_online = False
 

@@ -1,6 +1,5 @@
 """Dependency injection for FastAPI routes."""
 
-import time
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Query, Request, status

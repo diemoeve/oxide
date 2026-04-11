@@ -6,7 +6,6 @@ from ..auth import (
     SESSION_COOKIE_NAME,
     authenticate_user,
     create_user_session,
-    invalidate_session,
 )
 from ..deps import CurrentUser
 from ..schemas import LoginRequest, LoginResponse, UserInfo
