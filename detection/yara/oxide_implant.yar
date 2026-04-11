@@ -29,38 +29,31 @@ private rule is_macho {
 
 rule oxide_implant_linux {
     meta:
-        description = "Oxide RAT implant — Linux ELF binary"
+        description = "Oxide RAT implant — Linux ELF binary (post-S12)"
         author      = "diemoeve"
-        date        = "2026-04-10"
+        date        = "2026-04-11"
 
     strings:
-        $sni            = "oxide-c2" ascii
-        $log1           = "[*] Connecting to" ascii
-        $log2           = "[+] TLS handshake complete" ascii
-        $log3           = "[+] Persistence installed:" ascii
-        $cmd1           = "file_list" ascii
-        $cmd2           = "file_download" ascii
-        $cmd3           = "screenshot" ascii fullword
-        $cmd4           = "process_list" ascii
-        $cmd5           = "persist_status" ascii
-        $cmd6           = "persist_remove" ascii
-        $pers1          = "# oxide-persistence" ascii
-        $pers2          = "oxide-update.service" ascii
-        $pers3          = ".local/share/oxide/oxide-update" ascii
-        $tmpfile        = "/tmp/.oxide_screenshot.png" ascii
-        $crypto1        = "data too short for decryption" ascii
-        $av1            = "falcon-sensor" ascii
-        $av2            = "elastic-agent" ascii
-        $svc            = "Description=System Update Service" ascii
+        $cmd1       = "file_list" ascii fullword
+        $cmd2       = "file_download" ascii fullword
+        $cmd3       = "process_list" ascii fullword
+        $cmd4       = "persist_status" ascii fullword
+        $cmd5       = "persist_remove" ascii fullword
+        $pers1      = "user-autostart" ascii
+        $pers2      = "sys-update.service" ascii
+        $pers3      = ".sysmon/sys-update" ascii
+        $crypto1    = "data too short for decryption" ascii
+        $av1        = "falcon-sensor" ascii
+        $av2        = "elastic-agent" ascii
+        $svc        = "Description=System Update Service" ascii
+        $beacon_ep  = "/c2/beacon" ascii
 
     condition:
         is_elf and filesize < 20MB and
-        $sni and
         (
-            2 of ($log*) or
             3 of ($cmd*) or
             2 of ($pers*) or
-            ($tmpfile and $crypto1) or
+            ($crypto1 and $beacon_ep and 2 of ($cmd*)) or
             ($av1 and $av2 and 1 of ($cmd*)) or
             ($svc and 1 of ($pers*))
         )
@@ -68,28 +61,37 @@ rule oxide_implant_linux {
 
 rule oxide_implant_windows {
     meta:
-        description = "Oxide RAT implant — Windows PE binary"
+        description = "Oxide RAT implant — Windows PE binary (post-S12 obfuscated)"
         author      = "diemoeve"
-        date        = "2026-04-10"
+        date        = "2026-04-11"
+        note        = "Post-S12: string-based detections removed. Relies on runtime-required command dispatch strings, crypto error, and HTTP C2 endpoint."
 
     strings:
-        $reg_value  = "OxideSystemUpdate" ascii wide
-        $win_path   = "Microsoft\\Update\\oxide.exe" ascii wide
-        $sni        = "oxide-c2" ascii
-        $log1       = "[+] TLS handshake complete" ascii
-        $cmd1       = "file_list" ascii
-        $cmd2       = "file_download" ascii
-        $cmd3       = "screenshot" ascii fullword
-        $cmd4       = "process_list" ascii
+        // Command dispatch strings — not obfuscated (must be readable at runtime)
+        $cmd1       = "file_list" ascii fullword
+        $cmd2       = "file_download" ascii fullword
+        $cmd3       = "process_list" ascii fullword
+        $cmd4       = "persist_status" ascii fullword
+        $cmd5       = "persist_remove" ascii fullword
+        $cmd6       = "steal" ascii fullword
+
+        // Crypto error from oxide-shared — not obfuscated
         $crypto1    = "data too short for decryption" ascii
+
+        // HTTP C2 endpoint — runtime required for http-transport builds
+        $beacon_ep  = "/c2/beacon" ascii
+
+        // Packet field names — serde_json, not obfuscated
+        $pkt1       = "session_id" ascii
+        $pkt2       = "command_type" ascii
 
     condition:
         is_pe and filesize < 20MB and
         (
-            ($reg_value and $sni) or
-            ($win_path and 2 of ($cmd*)) or
-            ($reg_value and 1 of ($cmd*) and $crypto1) or
-            ($sni and 3 of ($cmd*) and $log1)
+            (4 of ($cmd*) and $crypto1) or
+            ($beacon_ep and 3 of ($cmd*)) or
+            ($beacon_ep and $crypto1 and $pkt1 and $pkt2) or
+            (5 of ($cmd*) and $pkt1)
         )
 }
 
