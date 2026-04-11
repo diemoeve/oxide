@@ -1,3 +1,4 @@
+import os as _os
 import struct
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -45,9 +46,6 @@ class CryptoContext:
 
     def _make_nonce(self, counter: int) -> bytes:
         return self._direction_prefix + struct.pack("<Q", counter)
-
-
-import os as _os
 
 
 class StatelessCrypto:
