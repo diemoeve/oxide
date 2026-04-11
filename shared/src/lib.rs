@@ -1,6 +1,6 @@
 pub mod constants;
 pub mod crypto;
-pub mod packet;
 pub mod frame;
+pub mod packet;
 
-pub use crypto::{derive_key, encrypt_stateless, decrypt_stateless};
+pub use crypto::{decrypt_stateless, derive_key, encrypt_stateless};

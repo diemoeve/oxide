@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "macos")]
+pub mod darwin;
 #[cfg(target_os = "linux")]
 pub mod linux;
 #[cfg(target_os = "windows")]
 pub mod windows;
-#[cfg(target_os = "macos")]
-pub mod darwin;
 
 pub trait PersistenceTrait: Send + Sync {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()>;
@@ -37,13 +37,17 @@ impl PersistenceChain {
             match method.install(binary_path) {
                 Ok(()) => {
                     results.push(PersistenceStatus {
-                        name: method.name(), installed: true, error: None,
+                        name: method.name(),
+                        installed: true,
+                        error: None,
                     });
                     return results;
                 }
                 Err(e) => {
                     results.push(PersistenceStatus {
-                        name: method.name(), installed: false, error: Some(e.to_string()),
+                        name: method.name(),
+                        installed: false,
+                        error: Some(e.to_string()),
                     });
                 }
             }
@@ -52,18 +56,32 @@ impl PersistenceChain {
     }
 
     pub fn check_all(&self) -> Vec<PersistenceStatus> {
-        self.methods.iter().map(|m| PersistenceStatus {
-            name: m.name(), installed: m.check(), error: None,
-        }).collect()
+        self.methods
+            .iter()
+            .map(|m| PersistenceStatus {
+                name: m.name(),
+                installed: m.check(),
+                error: None,
+            })
+            .collect()
     }
 
     pub fn remove_all(&self) -> Vec<PersistenceStatus> {
-        self.methods.iter().map(|m| match m.remove() {
-            Ok(()) => PersistenceStatus { name: m.name(), installed: false, error: None },
-            Err(e) => PersistenceStatus {
-                name: m.name(), installed: m.check(), error: Some(e.to_string()),
-            },
-        }).collect()
+        self.methods
+            .iter()
+            .map(|m| match m.remove() {
+                Ok(()) => PersistenceStatus {
+                    name: m.name(),
+                    installed: false,
+                    error: None,
+                },
+                Err(e) => PersistenceStatus {
+                    name: m.name(),
+                    installed: m.check(),
+                    error: Some(e.to_string()),
+                },
+            })
+            .collect()
     }
 }
 
@@ -83,7 +101,9 @@ pub fn stable_path() -> anyhow::Result<PathBuf> {
 
 pub fn copy_to_stable_from(source: &Path) -> anyhow::Result<PathBuf> {
     let dest = stable_path()?;
-    if let Some(parent) = dest.parent() { std::fs::create_dir_all(parent)?; }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     std::fs::copy(source, &dest)?;
     #[cfg(unix)]
     {
@@ -99,13 +119,21 @@ pub fn copy_to_stable() -> anyhow::Result<PathBuf> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_chain() -> PersistenceChain { linux::get_chain() }
+pub fn get_chain() -> PersistenceChain {
+    linux::get_chain()
+}
 #[cfg(target_os = "windows")]
-pub fn get_chain() -> PersistenceChain { windows::get_chain() }
+pub fn get_chain() -> PersistenceChain {
+    windows::get_chain()
+}
 #[cfg(target_os = "macos")]
-pub fn get_chain() -> PersistenceChain { darwin::get_chain() }
+pub fn get_chain() -> PersistenceChain {
+    darwin::get_chain()
+}
 #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-pub fn get_chain() -> PersistenceChain { PersistenceChain::new(vec![]) }
+pub fn get_chain() -> PersistenceChain {
+    PersistenceChain::new(vec![])
+}
 
 #[cfg(test)]
 mod tests {
@@ -113,18 +141,34 @@ mod tests {
 
     struct AlwaysOk;
     impl PersistenceTrait for AlwaysOk {
-        fn install(&self, _: &Path) -> anyhow::Result<()> { Ok(()) }
-        fn remove(&self) -> anyhow::Result<()> { Ok(()) }
-        fn check(&self) -> bool { true }
-        fn name(&self) -> &'static str { "always_ok" }
+        fn install(&self, _: &Path) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn remove(&self) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn check(&self) -> bool {
+            true
+        }
+        fn name(&self) -> &'static str {
+            "always_ok"
+        }
     }
 
     struct AlwaysErr;
     impl PersistenceTrait for AlwaysErr {
-        fn install(&self, _: &Path) -> anyhow::Result<()> { anyhow::bail!("blocked") }
-        fn remove(&self) -> anyhow::Result<()> { Ok(()) }
-        fn check(&self) -> bool { false }
-        fn name(&self) -> &'static str { "always_err" }
+        fn install(&self, _: &Path) -> anyhow::Result<()> {
+            anyhow::bail!("blocked")
+        }
+        fn remove(&self) -> anyhow::Result<()> {
+            Ok(())
+        }
+        fn check(&self) -> bool {
+            false
+        }
+        fn name(&self) -> &'static str {
+            "always_err"
+        }
     }
 
     #[test]
@@ -135,7 +179,9 @@ mod tests {
     #[test]
     fn chain_stops_at_first_success() {
         let chain = PersistenceChain::new(vec![
-            Box::new(AlwaysErr), Box::new(AlwaysOk), Box::new(AlwaysErr),
+            Box::new(AlwaysErr),
+            Box::new(AlwaysOk),
+            Box::new(AlwaysErr),
         ]);
         let r = chain.install_first_available(Path::new("/tmp/test"));
         assert_eq!(r.len(), 2);

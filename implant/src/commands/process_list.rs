@@ -1,6 +1,6 @@
+use crate::commands::CommandHandler;
 use anyhow::Result;
 use serde_json::Value;
-use crate::commands::CommandHandler;
 
 pub struct ProcessListHandler;
 

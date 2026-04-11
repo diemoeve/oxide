@@ -1,5 +1,5 @@
 use super::SystemInfo;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 pub fn gather_system_info() -> SystemInfo {
     let machine_id = std::fs::read_to_string("/etc/machine-id")
@@ -13,8 +13,7 @@ pub fn gather_system_info() -> SystemInfo {
         .trim()
         .to_string();
 
-    let username = std::env::var("USER")
-        .unwrap_or_else(|_| "unknown".to_string());
+    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
 
     let privileges = if nix::unistd::geteuid().is_root() {
         "admin".to_string()

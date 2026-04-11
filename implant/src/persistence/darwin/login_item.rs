@@ -6,7 +6,9 @@ pub struct LoginItemPersistence;
 
 impl PersistenceTrait for LoginItemPersistence {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()> {
-        let s = binary_path.to_str().ok_or_else(|| anyhow::anyhow!("invalid path"))?;
+        let s = binary_path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("invalid path"))?;
         // Legacy AppleScript. Works on macOS <= 12 and macOS 13+ (old method still functional).
         // macOS 13+ shows a BTM notification to the user when registered.
         // name: property required on Ventura 13.0.x to avoid "login item UNKNOWN" error.
@@ -28,14 +30,18 @@ impl PersistenceTrait for LoginItemPersistence {
 
     fn check(&self) -> bool {
         Command::new("osascript")
-            .args(["-e",
-                   "tell application \"System Events\" to get the name of every login item"])
+            .args([
+                "-e",
+                "tell application \"System Events\" to get the name of every login item",
+            ])
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).contains("oxide"))
             .unwrap_or(false)
     }
 
-    fn name(&self) -> &'static str { "login_item" }
+    fn name(&self) -> &'static str {
+        "login_item"
+    }
 }
 
 #[cfg(test)]

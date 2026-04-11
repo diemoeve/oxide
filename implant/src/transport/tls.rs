@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use oxide_shared::{crypto::CryptoContext, packet::Packet};
 use rustls::pki_types::{CertificateDer, ServerName};
 use std::sync::Arc;
@@ -26,18 +26,16 @@ impl TlsTransport {
             expected_hash: config.cert_hash,
         });
 
-        let tls_config = rustls::ClientConfig::builder_with_protocol_versions(
-            &[&rustls::version::TLS13],
-        )
-        .dangerous()
-        .with_custom_certificate_verifier(verifier)
-        .with_no_client_auth();
+        let tls_config =
+            rustls::ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
+                .dangerous()
+                .with_custom_certificate_verifier(verifier)
+                .with_no_client_auth();
 
         let connector = TlsConnector::from(Arc::new(tls_config));
-        let domain = ServerName::try_from("oxide-c2")
-            .unwrap()
-            .to_owned();
-        let tls_stream = connector.connect(domain, tcp)
+        let domain = ServerName::try_from("oxide-c2").unwrap().to_owned();
+        let tls_stream = connector
+            .connect(domain, tcp)
             .await
             .context("TLS handshake failed")?;
 
@@ -77,7 +75,9 @@ impl TlsTransport {
         }
         let mut buf = vec![0u8; len as usize];
         self.reader.read_exact(&mut buf).await?;
-        let json = self.crypto.decrypt(&buf)
+        let json = self
+            .crypto
+            .decrypt(&buf)
             .map_err(|e| anyhow::anyhow!("decrypt: {e}"))?;
         let packet: Packet = serde_json::from_slice(&json)?;
         if let Some(last) = self.last_recv_seq {
@@ -104,7 +104,7 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
         _ocsp: &[u8],
         _now: rustls::pki_types::UnixTime,
     ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let hash = Sha256::digest(end_entity.as_ref());
         if hash.as_slice() == self.expected_hash {
             Ok(rustls::client::danger::ServerCertVerified::assertion())
@@ -116,7 +116,10 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
     }
 
     fn verify_tls12_signature(
-        &self, _: &[u8], _: &CertificateDer<'_>, _: &rustls::DigitallySignedStruct,
+        &self,
+        _: &[u8],
+        _: &CertificateDer<'_>,
+        _: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
         Err(rustls::Error::PeerIncompatible(
             rustls::PeerIncompatible::Tls12NotOffered,
@@ -124,7 +127,10 @@ impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
     }
 
     fn verify_tls13_signature(
-        &self, _: &[u8], _: &CertificateDer<'_>, _: &rustls::DigitallySignedStruct,
+        &self,
+        _: &[u8],
+        _: &CertificateDer<'_>,
+        _: &rustls::DigitallySignedStruct,
     ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
         Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
     }

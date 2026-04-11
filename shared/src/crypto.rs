@@ -1,5 +1,8 @@
-use aes_gcm::{Aes256Gcm, Nonce, aead::{Aead, KeyInit}};
 use crate::constants::*;
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CryptoError {
@@ -21,8 +24,7 @@ pub struct CryptoContext {
 impl CryptoContext {
     pub fn new(psk: &str, salt: &[u8], is_initiator: bool) -> Self {
         let key = derive_key(psk, salt);
-        let cipher = Aes256Gcm::new_from_slice(&key)
-            .expect("valid key size");
+        let cipher = Aes256Gcm::new_from_slice(&key).expect("valid key size");
         let direction_prefix = if is_initiator {
             [0x00, 0x00, 0x00, 0x00]
         } else {
@@ -40,7 +42,9 @@ impl CryptoContext {
         let nonce_bytes = self.make_nonce(self.send_counter);
         self.send_counter += 1;
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let ciphertext = self.cipher.encrypt(nonce, plaintext)
+        let ciphertext = self
+            .cipher
+            .encrypt(nonce, plaintext)
             .expect("encryption should not fail");
         let mut out = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
         out.extend_from_slice(&nonce_bytes);
@@ -64,7 +68,8 @@ impl CryptoContext {
             }
         }
         let nonce = Nonce::from_slice(nonce_bytes);
-        let plaintext = self.cipher
+        let plaintext = self
+            .cipher
             .decrypt(nonce, &data[NONCE_SIZE..])
             .map_err(|_| CryptoError::DecryptFailed)?;
         self.last_recv_counter = Some(counter);
@@ -108,7 +113,9 @@ pub fn decrypt_stateless(key: &[u8; AES_KEY_SIZE], data: &[u8]) -> Result<Vec<u8
     }
     let nonce = Nonce::from_slice(&data[..NONCE_SIZE]);
     let cipher = Aes256Gcm::new_from_slice(key).expect("32-byte key");
-    cipher.decrypt(nonce, &data[NONCE_SIZE..]).map_err(|_| CryptoError::DecryptFailed)
+    cipher
+        .decrypt(nonce, &data[NONCE_SIZE..])
+        .map_err(|_| CryptoError::DecryptFailed)
 }
 
 #[cfg(test)]
@@ -199,7 +206,10 @@ mod tests {
     #[test]
     fn stateless_too_short_fails() {
         let key = derive_key("k", b"test-salt-must-be-32-bytes-long!");
-        assert!(matches!(decrypt_stateless(&key, &[0u8; 10]), Err(CryptoError::TooShort)));
+        assert!(matches!(
+            decrypt_stateless(&key, &[0u8; 10]),
+            Err(CryptoError::TooShort)
+        ));
     }
 
     #[test]

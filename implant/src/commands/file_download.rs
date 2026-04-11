@@ -1,13 +1,14 @@
-use anyhow::Result;
-use serde_json::Value;
-use base64::Engine;
 use crate::commands::CommandHandler;
+use anyhow::Result;
+use base64::Engine;
+use serde_json::Value;
 
 pub struct FileDownloadHandler;
 
 impl CommandHandler for FileDownloadHandler {
     fn execute(&self, args: Value) -> Result<Value> {
-        let path = args.get("path")
+        let path = args
+            .get("path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("missing 'path' argument"))?;
         let data = std::fs::read(path)?;

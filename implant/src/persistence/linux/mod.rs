@@ -1,8 +1,8 @@
 use crate::persistence::PersistenceChain;
 
+pub mod bash_profile;
 pub mod cron;
 pub mod systemd;
-pub mod bash_profile;
 
 pub fn get_chain() -> PersistenceChain {
     PersistenceChain::new(vec![

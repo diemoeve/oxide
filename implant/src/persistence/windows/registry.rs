@@ -10,9 +10,10 @@ impl PersistenceTrait for RegistryRunPersistence {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()> {
         use winreg::enums::*;
         use winreg::RegKey;
-        let run = RegKey::predef(HKEY_CURRENT_USER)
-            .open_subkey_with_flags(RUN_KEY, KEY_WRITE)?;
-        let s = binary_path.to_str().ok_or_else(|| anyhow::anyhow!("invalid path"))?;
+        let run = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(RUN_KEY, KEY_WRITE)?;
+        let s = binary_path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("invalid path"))?;
         run.set_value(VALUE_NAME, &s)?;
         Ok(())
     }
@@ -32,7 +33,9 @@ impl PersistenceTrait for RegistryRunPersistence {
             .and_then(|k| k.get_value::<String, _>(VALUE_NAME))
             .is_ok()
     }
-    fn name(&self) -> &'static str { "registry_run" }
+    fn name(&self) -> &'static str {
+        "registry_run"
+    }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -40,16 +43,26 @@ impl PersistenceTrait for RegistryRunPersistence {
     fn install(&self, _: &Path) -> anyhow::Result<()> {
         anyhow::bail!("registry not available on this platform")
     }
-    fn remove(&self) -> anyhow::Result<()> { Ok(()) }
-    fn check(&self) -> bool { false }
-    fn name(&self) -> &'static str { "registry_run" }
+    fn remove(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+    fn check(&self) -> bool {
+        false
+    }
+    fn name(&self) -> &'static str {
+        "registry_run"
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn value_name_stable() { assert_eq!(VALUE_NAME, "OxideSystemUpdate"); }
+    fn value_name_stable() {
+        assert_eq!(VALUE_NAME, "OxideSystemUpdate");
+    }
     #[test]
-    fn run_key_correct() { assert!(RUN_KEY.contains(r"CurrentVersion\Run")); }
+    fn run_key_correct() {
+        assert!(RUN_KEY.contains(r"CurrentVersion\Run"));
+    }
 }

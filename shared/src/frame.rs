@@ -67,7 +67,9 @@ mod tests {
 
     #[test]
     fn reject_oversized_length_prefix() {
-        let buf = (crate::constants::MAX_MESSAGE_SIZE + 1).to_le_bytes().to_vec();
+        let buf = (crate::constants::MAX_MESSAGE_SIZE + 1)
+            .to_le_bytes()
+            .to_vec();
         assert!(matches!(decode_frame(&buf), Err(FrameError::TooLarge(_))));
     }
 }

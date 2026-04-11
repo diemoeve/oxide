@@ -1,7 +1,7 @@
 use crate::persistence::PersistenceChain;
+pub mod dll_sideload;
 pub mod registry;
 pub mod scheduled_task;
-pub mod dll_sideload;
 
 pub fn get_chain() -> PersistenceChain {
     PersistenceChain::new(vec![

@@ -1,7 +1,7 @@
-use anyhow::Result;
-use serde_json::Value;
 use crate::commands::CommandHandler;
 use crate::persistence;
+use anyhow::Result;
+use serde_json::Value;
 
 pub struct PersistStatusHandler;
 

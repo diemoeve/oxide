@@ -1,7 +1,7 @@
+use crate::commands::CommandHandler;
 use anyhow::Result;
 use serde_json::Value;
 use std::fs;
-use crate::commands::CommandHandler;
 
 pub struct FileListHandler;
 
@@ -12,7 +12,8 @@ impl CommandHandler for FileListHandler {
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             let metadata = entry.metadata()?;
-            let modified = metadata.modified()
+            let modified = metadata
+                .modified()
                 .ok()
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs())

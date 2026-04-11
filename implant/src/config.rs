@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
-pub enum TransportMode { Tls, Http }
+pub enum TransportMode {
+    Tls,
+    Http,
+}
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -18,18 +21,18 @@ pub struct Config {
 
 impl Config {
     pub fn lab_default() -> Self {
-        let salt_bytes = hex::decode(
-            include_str!("../../certs/salt.hex").trim()
-        ).expect("invalid salt hex");
-        let hash_bytes = hex::decode(
-            include_str!("../../certs/cert_hash.hex").trim()
-        ).expect("invalid cert hash hex");
+        let salt_bytes =
+            hex::decode(include_str!("../../certs/salt.hex").trim()).expect("invalid salt hex");
+        let hash_bytes = hex::decode(include_str!("../../certs/cert_hash.hex").trim())
+            .expect("invalid cert hash hex");
         let mut cert_hash = [0u8; 32];
         cert_hash.copy_from_slice(&hash_bytes);
 
         let host = std::env::var("OXIDE_C2_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
         let port = std::env::var("OXIDE_C2_PORT")
-            .ok().and_then(|p| p.parse().ok()).unwrap_or(4444);
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(4444);
 
         #[cfg(feature = "http-transport")]
         let transport = TransportMode::Http;
@@ -46,7 +49,8 @@ impl Config {
             beacon_interval: Duration::from_secs(30),
             beacon_jitter: 0.25,
             user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
-                         (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36".to_string(),
+                         (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                .to_string(),
         }
     }
 }

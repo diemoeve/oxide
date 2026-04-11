@@ -95,9 +95,7 @@ pub(crate) fn run_subprocess(path: &str, timeout_secs: u64) -> Result<Vec<u8>> {
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
     loop {
         match child.try_wait().context("try_wait")? {
-            Some(_) => {
-                return Ok(child.wait_with_output().context("wait_with_output")?.stdout)
-            }
+            Some(_) => return Ok(child.wait_with_output().context("wait_with_output")?.stdout),
             None => {
                 if Instant::now() > deadline {
                     let _ = child.kill();
@@ -140,7 +138,8 @@ mod tests {
 
     #[test]
     fn test_parse_output_valid() {
-        let stdout = br#"{"credentials":[],"cookies":[],"ssh_keys":[],"errors":[],"collection_time_ms":5}"#;
+        let stdout =
+            br#"{"credentials":[],"cookies":[],"ssh_keys":[],"errors":[],"collection_time_ms":5}"#;
         let val = parse_output(stdout).unwrap();
         assert!(val["credentials"].is_array());
     }

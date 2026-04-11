@@ -1,10 +1,10 @@
 // implant/src/commands/portfwd.rs
+use super::CommandHandler;
+use crate::config::Config;
 use anyhow::{anyhow, Result};
 use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
-use super::CommandHandler;
-use crate::config::Config;
 
 pub struct PortFwdHandler {
     config: Arc<Config>,
@@ -12,7 +12,9 @@ pub struct PortFwdHandler {
 
 impl PortFwdHandler {
     pub fn new(config: Config) -> Self {
-        Self { config: Arc::new(config) }
+        Self {
+            config: Arc::new(config),
+        }
     }
 }
 

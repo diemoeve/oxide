@@ -10,14 +10,22 @@ fn append_block(binary_path: &Path) -> String {
     format!("{}\n{} &\n", MARKER, binary_path.display())
 }
 
-fn is_present(content: &str) -> bool { content.contains(MARKER) }
+fn is_present(content: &str) -> bool {
+    content.contains(MARKER)
+}
 
 fn remove_block(content: &str) -> String {
     let mut result = String::new();
     let mut skip_next = false;
     for line in content.lines() {
-        if line == MARKER { skip_next = true; continue; }
-        if skip_next { skip_next = false; continue; }
+        if line == MARKER {
+            skip_next = true;
+            continue;
+        }
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
         result.push_str(line);
         result.push('\n');
     }
@@ -38,8 +46,14 @@ impl PersistenceTrait for BashProfilePersistence {
         let mut ok = false;
         for path in &profile_paths() {
             let existing = std::fs::read_to_string(path).unwrap_or_default();
-            if is_present(&existing) { ok = true; continue; }
-            let mut f = std::fs::OpenOptions::new().append(true).create(true).open(path)?;
+            if is_present(&existing) {
+                ok = true;
+                continue;
+            }
+            let mut f = std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(path)?;
             f.write_all(block.as_bytes())?;
             ok = true;
         }
@@ -60,11 +74,15 @@ impl PersistenceTrait for BashProfilePersistence {
 
     fn check(&self) -> bool {
         profile_paths().iter().any(|p| {
-            std::fs::read_to_string(p).map(|c| is_present(&c)).unwrap_or(false)
+            std::fs::read_to_string(p)
+                .map(|c| is_present(&c))
+                .unwrap_or(false)
         })
     }
 
-    fn name(&self) -> &'static str { "bash_profile" }
+    fn name(&self) -> &'static str {
+        "bash_profile"
+    }
 }
 
 #[cfg(test)]
@@ -80,7 +98,9 @@ mod tests {
 
     #[test]
     fn is_present_true_with_marker() {
-        assert!(is_present("export PATH=$PATH\n# oxide-persistence\n/path &\n"));
+        assert!(is_present(
+            "export PATH=$PATH\n# oxide-persistence\n/path &\n"
+        ));
     }
 
     #[test]

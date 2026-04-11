@@ -33,21 +33,32 @@ fn systemd_user_available() -> bool {
 
 impl PersistenceTrait for SystemdPersistence {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()> {
-        anyhow::ensure!(systemd_user_available(), "systemd user session not available");
+        anyhow::ensure!(
+            systemd_user_available(),
+            "systemd user session not available"
+        );
         std::fs::create_dir_all(unit_dir()?)?;
         std::fs::write(unit_path()?, unit_content(binary_path))?;
-        Command::new("systemctl").args(["--user", "daemon-reload"]).status()?;
+        Command::new("systemctl")
+            .args(["--user", "daemon-reload"])
+            .status()?;
         let s = Command::new("systemctl")
-            .args(["--user", "enable", "--now", SERVICE_NAME]).status()?;
+            .args(["--user", "enable", "--now", SERVICE_NAME])
+            .status()?;
         anyhow::ensure!(s.success(), "systemctl enable failed");
         Ok(())
     }
 
     fn remove(&self) -> anyhow::Result<()> {
         let _ = Command::new("systemctl")
-            .args(["--user", "disable", "--now", SERVICE_NAME]).status();
-        if let Ok(p) = unit_path() { let _ = std::fs::remove_file(p); }
-        let _ = Command::new("systemctl").args(["--user", "daemon-reload"]).status();
+            .args(["--user", "disable", "--now", SERVICE_NAME])
+            .status();
+        if let Ok(p) = unit_path() {
+            let _ = std::fs::remove_file(p);
+        }
+        let _ = Command::new("systemctl")
+            .args(["--user", "daemon-reload"])
+            .status();
         Ok(())
     }
 
@@ -60,7 +71,9 @@ impl PersistenceTrait for SystemdPersistence {
                 .unwrap_or(false)
     }
 
-    fn name(&self) -> &'static str { "systemd_user" }
+    fn name(&self) -> &'static str {
+        "systemd_user"
+    }
 }
 
 #[cfg(test)]
@@ -76,5 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn service_name_constant() { assert_eq!(SERVICE_NAME, "oxide-update.service"); }
+    fn service_name_constant() {
+        assert_eq!(SERVICE_NAME, "oxide-update.service");
+    }
 }

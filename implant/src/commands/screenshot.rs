@@ -1,8 +1,8 @@
-use anyhow::Result;
-use serde_json::Value;
-use base64::Engine;
-use std::process::Command;
 use crate::commands::CommandHandler;
+use anyhow::Result;
+use base64::Engine;
+use serde_json::Value;
+use std::process::Command;
 
 pub struct ScreenshotHandler;
 
@@ -22,7 +22,9 @@ impl CommandHandler for ScreenshotHandler {
                 }))
             }
             Ok(s) => anyhow::bail!("scrot exited with status: {}", s),
-            Err(e) => anyhow::bail!("screenshot capture failed: {e} (is scrot installed? is DISPLAY set?)"),
+            Err(e) => anyhow::bail!(
+                "screenshot capture failed: {e} (is scrot installed? is DISPLAY set?)"
+            ),
         }
     }
 }
