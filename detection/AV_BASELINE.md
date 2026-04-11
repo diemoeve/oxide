@@ -145,3 +145,41 @@ Expected: `oxide_implant_windows` rule fires (via `$win_path` + `$cmd*` conditio
 6. `windows-not-implemented` — debug string, remove or replace
 7. Linux artifacts: `scrot`, `/tmp/.oxide_screenshot.png`, `.local/share/oxide/`, `# oxide-persistence`
 8. `schtasks` invocation strings — behavioral signal for EDR
+
+---
+
+## S12 Evasion Results
+
+**Date:** 2026-04-11
+**Session:** S12-evasion
+
+### Binary
+
+| Field | Value |
+|-------|-------|
+| SHA256 (pre-S12)  | a183f94e1f82565aa2d57e30c3c05ae9b1c82bce0986a92e5ee83ea3aaffba2f |
+| SHA256 (post-S12) | 9ebdabb57698d9e80febb411d94ebedb387290e20b4d9cc5499751612d74d876 |
+| Build | x86_64-pc-windows-gnu, http-transport feature |
+
+### Strings Removed
+
+| String | Method |
+|--------|--------|
+| `OxideSystemUpdate` | rename to `WindowsUpdateHelper` + obfstr |
+| `AppData\...\oxide.exe` | rename to `WinHealthMon.exe` + `#[cfg]` branch isolation |
+| `oxide-lab-psk` | rename to `lab-changeme-2026` + obfstr |
+| `OXIDE_C2_HOST` / `OXIDE_C2_PORT` | rename to `C2_HOST`/`C2_PORT` + obfstr |
+| `Mozilla/5.0 (X11; Linux x86_64)...` | platform-conditional `#[cfg(target_os = "windows")]` |
+| `[+]/[*]/[!]` log prefixes | `#[cfg(debug_assertions)]` via `dbg_log!` macro |
+| `windows-not-implemented` | replaced with real HWID from `MachineGuid` |
+| `scrot`, `/tmp/.oxide_screenshot.png` | `#[cfg(target_os = "linux")]` gate |
+| `.local/share/oxide/...` | `#[cfg]` branch isolation in `stable_path()` |
+| `schtasks` | obfstr |
+
+### VirusTotal
+
+**Status:** pending upload — upload binary to VT, record X/Y score here.
+
+### YARA Self-Test Post-S12
+
+`oxide_implant_windows` condition updated — no longer relies on `OxideSystemUpdate`/stable path strings. Now fires via: `4 of ($cmd*) and $crypto1`, `$beacon_ep and 3 of ($cmd*)`, or similar behavioral combos.
