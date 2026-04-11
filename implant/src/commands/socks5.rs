@@ -29,7 +29,7 @@ impl CommandHandler for Socks5StartHandler {
         let sid = session_id.clone();
         tokio::spawn(async move {
             if let Err(e) = crate::tunnel_client::run_tunnel(&cfg, "socks5", &sid).await {
-                eprintln!("[!] SOCKS5 tunnel: {e}");
+                crate::dbg_log!("[!] SOCKS5 tunnel: {e}");
             }
         });
         Ok(serde_json::json!({"status": "started", "session_id": session_id}))

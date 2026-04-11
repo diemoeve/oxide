@@ -86,7 +86,7 @@ pub async fn run_tunnel(config: &Config, tunnel_type: &str, session_id: &str) ->
         let (cmd, conn_id, payload) = match dec(&bytes) {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("[!] {e}");
+                crate::dbg_log!("[!] {e}");
                 continue;
             }
         };

