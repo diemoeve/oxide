@@ -264,7 +264,7 @@ class WSEvent(BaseModel):
 class StagingPayload(BaseModel):
     """Staging payload metadata (excludes blob for listing)."""
     id: str
-    stage_number: int
+    stage_number: int | None = None
     name: str
     description: str | None = None
     encryption_key_hint: str | None = None
