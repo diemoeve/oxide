@@ -26,10 +26,10 @@ cross-platform persistence, web panel, staged loader, standalone stealer.
 
 | Repo | Role | Language |
 |------|------|----------|
-| oxide (this) | Implant + C2 panel + detection | Rust + Python |
-| oxide-loader | 3-stage delivery chain | C + Rust |
-| oxide-stealer | Browser credential extraction | Rust |
-| oxide-infra | Lab infrastructure automation | Terraform + Ansible |
+| [oxide](https://github.com/diemoeve/oxide) (this) | Implant + C2 panel + detection | Rust + Python |
+| [oxide-loader](https://github.com/diemoeve/oxide-loader) | 3-stage delivery chain | C + Rust |
+| [oxide-stealer](https://github.com/diemoeve/oxide-stealer) | Browser credential extraction | Rust |
+| [oxide-infra](https://github.com/diemoeve/oxide-infra) | Lab infrastructure automation | Terraform + Ansible |
 
 ---
 
@@ -102,3 +102,21 @@ oxide/
 ├── tests/vm/   VM integration tests (libvirt)
 └── lab-setup/  Certificate generation
 ```
+
+---
+
+## Related
+
+- [oxide-loader](https://github.com/diemoeve/oxide-loader) - 3-stage delivery chain
+- [oxide-stealer](https://github.com/diemoeve/oxide-stealer) - Browser credential extraction
+- [oxide-infra](https://github.com/diemoeve/oxide-infra) - Lab infrastructure (Terraform + Ansible)
+
+---
+
+## VirusTotal
+
+| Binary | Detections | Link |
+|--------|------------|------|
+| oxide-implant (Linux x86_64) | | |
+| oxide-implant (Windows x86_64) | | |
+| oxide-stealer (Linux x86_64) | | |
