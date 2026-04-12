@@ -2,6 +2,8 @@
 **/__pycache__/
 *.pyc
 *.db
+*.db-shm
+*.db-wal
 /certs/
 *.pem
 *.crt
@@ -9,6 +11,19 @@
 salt.hex
 .venv/
 .claude/
+CLAUDE.md
+
+# Research / session notes
+_RESEARCH*.md
+
+# Lab data
+/data/
+/scripts/
+/stage3/
+/vm-config/
+
+# Python build artifacts
+panel/oxide_panel.egg-info/
 
 # VM test infrastructure
 /vm-images/
