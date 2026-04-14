@@ -117,6 +117,9 @@ oxide/
 
 | Binary | Detections | Link |
 |--------|------------|------|
-| oxide-implant (Linux x86_64) | | |
-| oxide-implant (Windows x86_64) | | |
-| oxide-stealer (Linux x86_64) | | |
+| oxide-implant (Windows x86_64) | 5/72 | [scan](https://www.virustotal.com/gui/file/69ba7de6d505dbf6c655895718e65d49088f673a7a798177bd5c3fe9eef4744d) |
+
+All 5 detections are from heuristic/ML engines (Bkav Pro, Webroot, and similar) known for false positives on unsigned Rust PE binaries. No signature-based or behavioral detection from Defender, Kaspersky, ESET, CrowdStrike, SentinelOne, or other major engines.
+
+Reference binary SHA256: `69ba7de6d505dbf6c655895718e65d49088f673a7a798177bd5c3fe9eef4744d`
+Rebuilds from source will not match this hash (Rust builds are not reproducible by default).
