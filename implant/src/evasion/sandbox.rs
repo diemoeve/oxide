@@ -11,6 +11,7 @@
 ///
 /// CPU checks use inline asm only (zero Windows API surface).
 /// Registry check uses winreg (generates file I/O — call after etw::bypass()).
+#[allow(dead_code)]
 pub fn is_sandbox() -> bool {
     is_hypervisor_cpuid() || is_timing_anomalous() || is_virtualbox_registry()
 }

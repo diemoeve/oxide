@@ -23,7 +23,7 @@ use core::ffi::c_void;
 
 use dinvk::{
     winapis::{AddVectoredExceptionHandler, RemoveVectoredExceptionHandler},
-    types::{CONTEXT, EXCEPTION_POINTERS, EXCEPTION_SINGLE_STEP,
+    types::{EXCEPTION_POINTERS, EXCEPTION_SINGLE_STEP,
              EXCEPTION_CONTINUE_EXECUTION, EXCEPTION_CONTINUE_SEARCH},
 };
 
