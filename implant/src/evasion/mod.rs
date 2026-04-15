@@ -5,7 +5,8 @@
 //!
 //! Init order matters:
 //!   1. sandbox CPU checks     — pure asm, zero Win32 calls
-//!   1b. sandbox debugger checks — pure PEB reads, zero Win32 calls
+//!
+//!      1b. sandbox debugger checks — pure PEB reads, zero Win32 calls
 //!   2. etw::bypass()          — kill user-mode ETW before any calls generate events
 //!   3. amsi::bypass()         — VEH registration invisible now that ETW is dead
 //!   4. sandbox registry       — file I/O telemetry suppressed by dead ETW

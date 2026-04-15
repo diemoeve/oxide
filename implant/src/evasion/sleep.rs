@@ -2,7 +2,8 @@
 //!
 //! Zeroes the first 0x1000 bytes of the implant's own PE image (DOS header
 //! + NT headers + section table) while sleeping between beacon cycles.
-//! Restored on wake. Defeats PE-sieve, Moneta, BeaconEye header scans.
+//!
+//!   Restored on wake. Defeats PE-sieve, Moneta, BeaconEye header scans.
 //!
 //! Safe with multi-threaded tokio: only headers zeroed, not .text.
 //! Executing threads continue running from the already-loaded .text section.

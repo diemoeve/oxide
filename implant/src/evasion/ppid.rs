@@ -8,9 +8,6 @@
 //!
 //! Detection: detection/sigma/stealth_ppid_mismatch.yml.
 
-#[cfg(all(target_os = "windows", feature = "stealth"))]
-use crate::dbg_log;
-
 const GUARD_VAR: &str = "__PROC_INIT";
 
 /// Spoof parent to explorer.exe on first run. No-op if guard var is set.
