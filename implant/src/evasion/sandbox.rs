@@ -31,7 +31,7 @@ pub(super) fn is_hypervisor_cpuid() -> bool {
                 inout("eax") 1u32 => _,
                 inout("ecx") 0u32 => ecx,
                 out("edx") _,
-                options(nostack, nomem),
+                options(nomem),  // nostack omitted: push rbx writes to stack
             );
         }
         (ecx >> 31) & 1 == 1
@@ -60,7 +60,7 @@ pub(super) fn is_timing_anomalous() -> bool {
                 inout("eax") 0u32 => _,
                 out("ecx") _,
                 out("edx") _,
-                options(nostack, nomem),
+                options(nomem),  // nostack omitted: push rbx writes to stack
             );
         }
         let tsc2 = rdtsc();
