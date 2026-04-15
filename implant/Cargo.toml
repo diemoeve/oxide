@@ -8,6 +8,7 @@ default = ["tls-transport"]
 tls-transport = []
 http-transport = ["dep:tokio-tungstenite", "dep:futures-util"]
 edr-evasion = ["dep:dinvk"]
+uwd = ["dep:uwd"]
 
 [dependencies]
 oxide-shared = { path = "../shared" }
