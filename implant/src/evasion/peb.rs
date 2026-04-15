@@ -102,6 +102,9 @@ pub unsafe fn resolve_export(module_base: *const u8, name: &[u8]) -> Option<*con
     //   0x1C AddressOfFunctions (u32 RVA)
     //   0x20 AddressOfNames (u32 RVA)
     //   0x24 AddressOfNameOrdinals (u32 RVA)
+    // IMAGE_DATA_DIRECTORY[0].Size is the u32 immediately after VirtualAddress (NtHeaders+0x8C)
+    let export_dir_size = *(nt_hdrs.add(0x8C) as *const u32) as usize;
+
     let num_names = *(exp.add(0x18) as *const u32) as usize;
     let fn_rva_table = module_base.add(*(exp.add(0x1C) as *const u32) as usize) as *const u32;
     let name_rva_table = module_base.add(*(exp.add(0x20) as *const u32) as usize) as *const u32;
@@ -115,6 +118,11 @@ pub unsafe fn resolve_export(module_base: *const u8, name: &[u8]) -> Option<*con
         if cstr_eq(name_ptr, target) {
             let ordinal = *ord_table.add(i) as usize;
             let fn_rva = *fn_rva_table.add(ordinal) as usize;
+            // Forwarder RVA: fn_rva falls inside the export directory itself.
+            // It points to an ASCII forwarder string, not executable code — skip it.
+            if fn_rva >= export_rva && fn_rva < export_rva + export_dir_size {
+                return None;
+            }
             return Some(module_base.add(fn_rva));
         }
     }
@@ -134,12 +142,14 @@ fn utf16_eq_ascii_icase(utf16: &[u16], ascii: &str) -> bool {
         .strip_suffix(b".DLL")
         .unwrap_or(&ascii_upper);
 
-    let utf16_ascii: Vec<u8> = utf16.iter()
-        .filter_map(|&c| if c < 128 { Some((c as u8).to_ascii_uppercase()) } else { None })
+    // Non-ASCII code unit in the DLL name → cannot match an ASCII query.
+    let utf16_ascii: Option<Vec<u8>> = utf16.iter()
+        .map(|&c| if c < 128 { Some((c as u8).to_ascii_uppercase()) } else { None })
         .collect();
-    let utf16_trimmed = utf16_ascii
+    let Some(utf16_upper) = utf16_ascii else { return false; };
+    let utf16_trimmed = utf16_upper
         .strip_suffix(b".DLL")
-        .unwrap_or(&utf16_ascii);
+        .unwrap_or(&utf16_upper);
 
     utf16_trimmed == ascii_trimmed
 }
