@@ -1,0 +1,38 @@
+title: Oxide — Sandbox Evasion via VM Detection and Immediate Exit
+id: d6a04e5f-7145-4b32-b256-oxide006sbox1
+status: experimental
+description: >
+  Detects sandbox evasion pattern: process accesses VirtualBox/VMware guest registry
+  keys shortly after startup and exits with code 0.
+  Oxide v0.6 checks three indicators at startup: CPUID EAX=1 ECX bit 31 (hypervisor
+  present bit), RDTSC timing delta around CPUID EAX=0 (threshold 750 cycles), and
+  HKLM\SOFTWARE\Oracle\VirtualBox Guest Additions registry key existence.
+  If any check returns true, the process calls std::process::exit(0) immediately.
+  CAPE/Zenbox v0.5 detonated cleanly (no checks existed); this is the fix.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1497/001/
+  - https://www.joesecurity.org/blog/3535317197858305930
+tags:
+  - attack.defense_evasion
+  - attack.t1497.001
+logsource:
+  product: windows
+  category: registry_event
+detection:
+  selection:
+    TargetObject|contains:
+      - '\SOFTWARE\Oracle\VirtualBox Guest Additions'
+      - '\SOFTWARE\VMware, Inc.\VMware Tools'
+      - '\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters'
+  filter_legitimate:
+    Image|contains:
+      - 'VBoxService.exe'
+      - 'vmtoolsd.exe'
+      - 'VBoxTray.exe'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - VM management software running on guest
+  - Hardware inventory tools querying virtualization status
+level: medium

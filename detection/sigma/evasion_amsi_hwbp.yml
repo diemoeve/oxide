@@ -1,0 +1,37 @@
+title: Oxide — AMSI Bypass via VEH Hardware Breakpoint
+id: b4e82c3d-5923-4f10-9034-oxide006amsi1
+status: experimental
+description: >
+  Detects the VEH² (Vectored Exception Handler squared) AMSI bypass pattern.
+  Oxide v0.6 installs two VEH handlers at startup: handler1 sets a hardware
+  breakpoint (Dr0) on AmsiScanBuffer via EXCEPTION_BREAKPOINT context; handler2
+  intercepts EXCEPTION_SINGLE_STEP at AmsiScanBuffer and forces AMSI_RESULT_CLEAN.
+  No NtSetContextThread call is made (avoids Kernel-Audit-API-Calls ETW provider).
+  Detection signals: AddVectoredExceptionHandler from non-framework process, followed
+  by debug register modification visible to EDR kernel-mode inspection.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://www.crowdstrike.com/en-us/blog/crowdstrike-investigates-threat-of-patchless-amsi-bypass-attacks/
+  - https://fluxsec.red/vectored-exception-handling-squared-rust
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    EventID: 10
+    TargetImage|contains: 'amsi.dll'
+    GrantedAccess|contains: '0x10'
+  filter_system:
+    SourceImage|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  condition: selection and not filter_system
+falsepositives:
+  - EDR agents and security software that legitimately install VEH handlers
+  - .NET CLR loading amsi.dll for script block logging
+level: medium

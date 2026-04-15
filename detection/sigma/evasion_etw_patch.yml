@@ -1,0 +1,43 @@
+title: Oxide — ETW Bypass via NtTraceEvent Memory Patch
+id: a3f71b2c-4812-4e09-8923-oxide006etw01
+status: experimental
+description: >
+  Detects ETW bypass via single-byte patch (0xC3 ret) at NtTraceEvent in ntdll.dll.
+  Oxide v0.6 changes ntdll .text page to PAGE_EXECUTE_READWRITE via indirect
+  NtProtectVirtualMemory syscall, writes 0xC3, then restores original protection.
+  Standard Sysmon does NOT generate events for same-process VirtualProtect calls
+  (Sysmon Event 10 only covers cross-process access). Real-time detection requires:
+  (1) EDR with usermode API monitoring hooks on VirtualProtect/NtProtectVirtualMemory,
+  (2) ETWTI kernel telemetry (Elastic Security 8.11+, Falcon, CrowdStrike), or
+  (3) Periodic memory integrity scan of ntdll .text section.
+  This rule targets EDR/XDR platforms that surface memory modification telemetry.
+  Use the companion YARA rule for post-incident memory scanning.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1562/006/
+  - https://jonny-johnson.medium.com/refining-detection-new-perspectives-on-etw-patching-telemetry-e6c94e55a9ad
+  - https://fluxsec.red/etw-patching-rust
+tags:
+  - attack.defense_evasion
+  - attack.t1562.006
+logsource:
+  product: windows
+  category: process_tampering
+  definition: >
+    Requires EDR/XDR platform with memory modification telemetry
+    (Microsoft Defender for Endpoint, CrowdStrike Falcon, Elastic Security 8.11+).
+    Standard Sysmon does not generate events for same-process page protection changes.
+detection:
+  selection:
+    TargetImage|endswith: '\ntdll.dll'
+    NewProtection: '0x40'
+  filter_system:
+    Image|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  condition: selection and not filter_system
+falsepositives:
+  - Security products performing ntdll integrity verification
+  - Debuggers (WinDbg, x64dbg) patching ntdll for analysis
+level: high

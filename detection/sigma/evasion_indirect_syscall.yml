@@ -1,0 +1,39 @@
+title: Oxide — Indirect Syscall via ntdll Stub Trampoline
+id: c5f93d4e-6034-4a21-a145-oxide006sys01
+status: experimental
+description: >
+  Detects indirect syscall execution where the syscall instruction executes from
+  inside ntdll.dll (a legitimate syscall;ret gadget) but the originating call stack
+  shows a non-Windows module as the origin. Oxide v0.6 uses dinvk::syscall! which
+  resolves the SSN via Tartarus Gate (Hell/Halo/Tartarus fallback chain) and jumps
+  to the syscall;ret sequence (0x0F 0x05 0xC3) inside ntdll at runtime.
+  Requires ETWTI (ETW Threat Intelligence provider, kernel-mode) or
+  Elastic Security 8.11+ call-stack-based detections.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://www.elastic.co/security-labs/doubling-down-etw-callstacks
+  - https://redops.at/en/blog/direct-syscalls-vs-indirect-syscalls
+tags:
+  - attack.defense_evasion
+  - attack.t1055
+logsource:
+  product: windows
+  category: process_access
+  definition: >
+    Requires ETWTI kernel telemetry or EDR call-stack inspection capability.
+    Standard Sysmon does not detect syscall origin outside ntdll.
+detection:
+  selection:
+    CallTrace|contains: 'UNKNOWN'
+    Image|endswith: '.exe'
+  filter_system:
+    Image|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  condition: selection and not filter_system
+falsepositives:
+  - JIT-compiled code (.NET, Java) executing syscalls from heap memory
+  - Packers and protectors that use indirect syscalls
+level: high
