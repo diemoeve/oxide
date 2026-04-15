@@ -59,6 +59,8 @@ pub unsafe fn bypass() {
     let mut region_base2 = target as *mut c_void;
     let mut region_size2: usize = 1;
     let mut dummy: u32 = 0;
+    // Ignore restore failure — the patch is already written.
+    // Leaving the page RWX is a minor exposure; rolling back the patch would be worse.
     let _ = dinvk::syscall!(
         "NtProtectVirtualMemory",
         dinvk::winapis::NtCurrentProcess(),
@@ -72,8 +74,9 @@ pub unsafe fn bypass() {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn module_compiles() {
-        // Compilation success = this test passes.
-        // Runtime behavior tested manually on Windows target.
+    fn compiles_on_host() {
+        // Verifies the module compiles on the Linux cross-compile host.
+        // The etw module is cfg-gated to Windows in mod.rs so no implementation
+        // code runs here; runtime behavior is tested manually on a Windows target.
     }
 }
