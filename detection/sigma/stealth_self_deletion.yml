@@ -1,0 +1,33 @@
+title: Oxide — Process Deletes Own Executable at Runtime (Anti-Forensics)
+id: b0e4d6c7-2545-4f44-e367-oxide007del01
+status: experimental
+description: >
+  Detects a process deleting its own executable while running.
+  Oxide v0.7 uses SetFileInformationByHandle with FileDispositionInfoEx
+  to mark its original binary for deletion after copying to stable path.
+  Requires Sysmon Event 23 (FileDelete) or Event 26 (FileDeleteDetected).
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1070/004/
+tags:
+  - attack.defense_evasion
+  - attack.t1070.004
+logsource:
+  product: windows
+  category: file_delete
+detection:
+  selection:
+    EventID:
+      - 23
+      - 26
+    Image|endswith: '\wdhost.exe'
+    TargetFilename|endswith: '.exe'
+  filter_system:
+    Image|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  condition: selection and not filter_system
+falsepositives:
+  - Installers that self-delete after execution
+level: medium

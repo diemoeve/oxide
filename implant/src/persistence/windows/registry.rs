@@ -1,7 +1,9 @@
 use crate::persistence::PersistenceTrait;
 use std::path::Path;
 
+#[allow(dead_code)]
 pub struct RegistryRunPersistence;
+#[allow(dead_code)]
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
 #[cfg(target_os = "windows")]

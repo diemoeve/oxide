@@ -13,7 +13,11 @@
 /// Registry check uses winreg (generates file I/O — call after etw::bypass()).
 #[allow(dead_code)]
 pub fn is_sandbox() -> bool {
-    is_hypervisor_cpuid() || is_timing_anomalous() || is_virtualbox_registry()
+    is_hypervisor_cpuid()
+        || is_timing_anomalous()
+        || is_virtualbox_registry()
+        || is_being_debugged()
+        || is_ntglobalflag_set()
 }
 
 /// CPUID EAX=1: ECX bit 31 is the "Hypervisor Present Bit".
@@ -71,6 +75,44 @@ pub(super) fn is_timing_anomalous() -> bool {
     {
         false
     }
+}
+
+/// PEB.BeingDebugged at gs:[0x60]+0x02.
+/// Set by Windows when a user-mode debugger is attached at process creation
+/// or via DebugActiveProcess(). Not set by kernel debuggers.
+pub(super) fn is_being_debugged() -> bool {
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    unsafe {
+        let peb: *const u8;
+        core::arch::asm!(
+            "mov {}, qword ptr gs:[0x60]",
+            out(reg) peb,
+            options(nostack, preserves_flags),
+        );
+        *peb.add(0x02) != 0
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
+    { false }
+}
+
+/// PEB.NtGlobalFlag at gs:[0x60]+0xBC (x86_64 offset — NOT 0x68 which is x86).
+/// Under a user-mode debugger, Windows sets 0x70:
+///   FLG_HEAP_ENABLE_TAIL_CHECK (0x10) | FLG_HEAP_ENABLE_FREE_CHECK (0x20)
+///   | FLG_HEAP_VALIDATE_PARAMETERS (0x40).
+pub(super) fn is_ntglobalflag_set() -> bool {
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    unsafe {
+        let peb: *const u8;
+        core::arch::asm!(
+            "mov {}, qword ptr gs:[0x60]",
+            out(reg) peb,
+            options(nostack, preserves_flags),
+        );
+        let flags = *(peb.add(0xBC) as *const u32);
+        (flags & 0x70) != 0
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
+    { false }
 }
 
 /// Check for VirtualBox Guest Additions registry key.
@@ -133,5 +175,20 @@ mod tests {
         let t2 = rdtsc();
         // TSC must be non-decreasing between two consecutive reads.
         assert!(t2 >= t1);
+    }
+
+    #[test]
+    fn being_debugged_returns_bool() { let _ = is_being_debugged(); }
+
+    #[test]
+    fn ntglobalflag_returns_bool() { let _ = is_ntglobalflag_set(); }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn ntglobalflag_offset_is_x64_not_x86() {
+        // x86 offset is 0x68. x86_64 offset is 0xBC. Must not be confused.
+        const X64_OFFSET: usize = 0xBC;
+        const X86_OFFSET: usize = 0x68;
+        assert_ne!(X64_OFFSET, X86_OFFSET);
     }
 }
