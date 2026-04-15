@@ -7,6 +7,7 @@ edition = "2021"
 default = ["tls-transport"]
 tls-transport = []
 http-transport = ["dep:tokio-tungstenite", "dep:futures-util"]
+edr-evasion = ["dep:dinvk"]
 
 [dependencies]
 oxide-shared = { path = "../shared" }
@@ -32,3 +33,5 @@ nix = { version = "0.29", features = ["user", "process"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.52"
+dinvk = { version = "0.4", optional = true }
+uwd = { version = "0.3", optional = true }
