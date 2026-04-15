@@ -22,6 +22,8 @@ pub mod amsi;
 #[cfg(feature = "edr-evasion")]
 pub mod sandbox;
 
+pub mod sleep;
+
 /// Initialize all evasion techniques. Call once at process startup before
 /// any network or filesystem activity.
 ///

