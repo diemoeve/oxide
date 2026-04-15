@@ -19,6 +19,7 @@ mod checkin;
 mod commands;
 mod config;
 mod dispatcher;
+mod evasion;
 mod persistence;
 mod platform;
 mod transport;
