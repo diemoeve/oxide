@@ -1,0 +1,28 @@
+title: Oxide — PE Header Zeroed in Memory During Sleep (Memory Scanner Evasion)
+id: f8c2b4a5-0323-4d22-c145-oxide007mem01
+status: experimental
+description: >
+  Detects PE header erasure in memory. Oxide v0.7 zeroes first 0x1000 bytes
+  of its own PE image via NtProtectVirtualMemory before sleeping between
+  beacon check-ins, defeating PE-sieve and Moneta header scans.
+  Requires EDR with memory protection change telemetry. Standard Sysmon
+  does NOT detect same-process VirtualProtect changes.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1562/
+tags:
+  - attack.defense_evasion
+  - attack.t1562
+logsource:
+  product: windows
+  category: process_tampering
+  definition: Requires EDR with in-process memory modification telemetry.
+detection:
+  selection:
+    TargetImage|endswith: '\wdhost.exe'
+    NewProtection: '0x40'
+  condition: selection
+falsepositives:
+  - Security software performing integrity checks
+level: high

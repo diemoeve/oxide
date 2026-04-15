@@ -1,0 +1,32 @@
+title: Oxide — PPID Spoofing via AppData Process with Explorer Parent
+id: a9d3c5b6-1434-4e33-d256-oxide007ppid1
+status: experimental
+description: >
+  Detects PPID spoofing where a process in AppData\Local\Microsoft\ appears as
+  child of explorer.exe but was not launched via shell execution. Oxide v0.7
+  uses PROC_THREAD_ATTRIBUTE_PARENT_PROCESS. Requires Sysmon Event 1 with
+  full parent tracking.
+author: diemoeve
+date: 2026/04/15
+references:
+  - https://attack.mitre.org/techniques/T1134/004/
+tags:
+  - attack.defense_evasion
+  - attack.t1134.004
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    ParentImage|endswith: '\explorer.exe'
+    Image|contains: '\AppData\Local\Microsoft\'
+  filter_known:
+    Image|contains:
+      - '\AppData\Local\Microsoft\OneDrive\'
+      - '\AppData\Local\Microsoft\EdgeUpdate\'
+      - '\AppData\Local\Microsoft\Teams\'
+      - '\AppData\Local\Microsoft\WindowsApps\'
+  condition: selection and not filter_known
+falsepositives:
+  - Unknown legitimate apps in AppData\Local\Microsoft\ launched via Explorer context menu
+level: medium
