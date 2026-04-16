@@ -1,0 +1,46 @@
+title: Oxide — Shellcode Obfuscation via Data-Format Encoding APIs
+id: b4d8e3f1-7a22-4c55-d182-oxide022enc01
+status: experimental
+description: >
+  Detects use of Windows network-identifier parsing APIs as shellcode decode
+  primitives. Malware encodes shellcode as IPv4/UUID/MAC address strings and
+  calls these APIs to write executable bytes into memory — replacing memcpy /
+  WriteProcessMemory with legitimately-looking string-to-binary conversions.
+  Used by Hive ransomware (2022, all four formats), Lazarus Group
+  (UuidFromStringA + EnumSystemLocalesA callback), and Cobalt Strike stageless
+  loaders. Oxide uses this to avoid PE-blob detection in stage3.
+author: diemoeve
+date: 2026/04/16
+references:
+  - https://attack.mitre.org/techniques/T1027/010/
+  - https://www.sentinelone.com/blog/hive-ransomware-deploys-novel-ipfuscation-technique/
+  - https://isc.sans.edu/diary/Shellcode%20Encoded%20in%20UUIDs/31752
+tags:
+  - attack.defense_evasion
+  - attack.t1027.010
+logsource:
+  product: windows
+  category: image_load
+  definition: Requires Sysmon ImageLoad (Event ID 7) with full import monitoring.
+detection:
+  # Presence of shellcode decode APIs in a loaded PE's import table, combined
+  # with a subsequent executable memory allocation in the same process.
+  selection_uuid:
+    ImageLoaded|contains: 'Rpcrt4.dll'
+    CallTrace|contains: 'UuidFromStringA'
+  selection_ipv4:
+    CallTrace|contains: 'RtlIpv4StringToAddressA'
+  selection_mac:
+    CallTrace|contains: 'RtlEthernetStringToAddressA'
+  filter_legitimate_network:
+    Image|endswith:
+      - '\System32\mmc.exe'
+      - '\System32\netsh.exe'
+      - '\System32\ipconfig.exe'
+      - '\System32\ping.exe'
+  condition: (selection_uuid or selection_ipv4 or selection_mac) and not filter_legitimate_network
+falsepositives:
+  - Network diagnostic tools that genuinely parse IPv4/MAC addresses
+  - COM-heavy applications that load Rpcrt4 for legitimate RPC
+  - Development tools (Visual Studio, windbg) inspecting network interfaces
+level: medium
