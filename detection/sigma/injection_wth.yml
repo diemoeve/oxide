@@ -1,0 +1,32 @@
+title: Waiting Thread Hijacking Process Access
+id: a7f3e1b8-2934-4f11-c823-oxide019wth1
+status: experimental
+description: >
+  Detects process memory access consistent with Waiting Thread Hijacking:
+  a process opened with VM_OPERATION+VM_READ+VM_WRITE flags without a
+  subsequent CreateRemoteThread or SetThreadContext event. WTH hijacks a
+  WrQueue thread pool thread by overwriting its return address on the stack.
+date: 2026/04/16
+author: diemoeve
+references:
+  - https://research.checkpoint.com/2025/waiting-thread-hijacking/
+tags:
+  - attack.defense_evasion
+  - attack.t1055.003
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection:
+    TargetImage|endswith: '\svchost.exe'
+    GrantedAccess|contains:
+      - '0x1038'
+      - '0x143a'
+  filter_legitimate:
+    SourceImage|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  condition: selection and not filter_legitimate
+falsepositives:
+  - Security tools performing memory inspection of svchost
+level: high

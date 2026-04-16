@@ -3,6 +3,12 @@ use serde_json::Value;
 
 pub mod file_download;
 pub mod file_list;
+#[cfg(target_os = "windows")]
+pub mod lsass_dump;
+#[cfg(target_os = "windows")]
+pub mod uac_bypass;
+#[cfg(target_os = "windows")]
+pub mod elevate;
 pub mod persist_remove;
 pub mod persist_status;
 #[cfg(feature = "http-transport")]

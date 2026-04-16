@@ -1,0 +1,33 @@
+title: UAC Bypass via CMSTPLUA Auto-Elevated COM Object
+id: b0e6f4d3-5267-4044-f156-oxide019uac1
+status: experimental
+description: >
+  Detects UAC bypass via the CMSTPLUA auto-elevated COM object
+  (CLSID 3E5FC7F9-9A51-4367-9063-A120244FBEC7). Sysmon Event 7 loading
+  cmstplua.dll or cmlua.dll from a process other than dllhost.exe indicates
+  the COM surrogate bypass is in use. Also used by Formbook and LockBit.
+date: 2026/04/16
+author: diemoeve
+references:
+  - https://any.run/cybersecurity-blog/windows11-uac-bypass/
+  - https://medium.com/falconforce/falconfriday-detecting-uac-bypasses-0xff16-86c2a9107abf
+tags:
+  - attack.privilege_escalation
+  - attack.defense_evasion
+  - attack.t1548.002
+logsource:
+  product: windows
+  category: image_load
+detection:
+  selection:
+    ImageLoaded|endswith:
+      - '\cmstplua.dll'
+      - '\cmlua.dll'
+      - '\cmluautil.dll'
+  filter_system:
+    Image|endswith: '\dllhost.exe'
+    Image|contains: '\Windows\System32\'
+  condition: selection and not filter_system
+falsepositives:
+  - Legitimate Connection Manager Profile Installer usage (rare in modern environments)
+level: high

@@ -1,0 +1,28 @@
+title: Process Hollowing via SetThreadContext
+id: a8c4f2d1-3045-4e22-d934-oxide019hol1
+status: experimental
+description: >
+  Detects process hollowing: a remote thread created or thread context set
+  on a newly spawned svchost.exe from a non-system parent process. Primary
+  signal is ETW-TI THREATINT_SETTHREADCONTEXT_REMOTE on the svchost primary thread.
+date: 2026/04/16
+author: diemoeve
+references:
+  - https://attack.mitre.org/techniques/T1055/012/
+tags:
+  - attack.defense_evasion
+  - attack.t1055.012
+logsource:
+  product: windows
+  category: create_remote_thread
+detection:
+  selection:
+    TargetImage|endswith: '\svchost.exe'
+  filter_system:
+    SourceImage|contains:
+      - '\Windows\System32\services.exe'
+      - '\Windows\System32\svchost.exe'
+  condition: selection and not filter_system
+falsepositives:
+  - Legitimate service management tools
+level: high
