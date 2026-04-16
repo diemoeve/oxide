@@ -10,6 +10,7 @@ dependencies = [
     "python-multipart>=0.0.18",
     "bcrypt>=4.2",
     "pillow>=11.0",
+    "dnslib>=0.9",
 ]
 
 [project.optional-dependencies]

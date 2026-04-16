@@ -10,6 +10,8 @@ http-transport = ["dep:tokio-tungstenite", "dep:futures-util"]
 edr-evasion = ["dep:dinvk"]
 uwd = ["dep:uwd"]
 stealth = ["dep:windows", "dep:windows-core"]
+dns-transport = ["data-encoding", "rand_distr", "flate2"]
+doh-transport = ["data-encoding", "rand_distr", "flate2"]
 
 [dependencies]
 oxide-shared = { path = "../shared" }
@@ -29,6 +31,9 @@ anyhow = "1"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
 tokio-tungstenite = { version = "0.23", features = ["rustls-tls-webpki-roots"], optional = true }
 futures-util = { version = "0.3", optional = true }
+data-encoding = { version = "2", optional = true }
+rand_distr = { version = "0.4", optional = true }
+flate2 = { version = "1", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["user", "process"] }

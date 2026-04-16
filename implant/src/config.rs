@@ -26,6 +26,7 @@ pub struct Config {
     pub beacon_jitter: f64,
     #[allow(dead_code)]
     pub user_agent: String,
+    pub beacon_base_secs: f64,
 }
 
 impl Config {
@@ -74,6 +75,7 @@ impl Config {
             beacon_interval: Duration::from_secs(30),
             beacon_jitter: 0.25,
             user_agent,
+            beacon_base_secs: 7200.0,
         }
     }
 }
@@ -84,8 +86,6 @@ mod tests {
 
     #[test]
     fn lab_default_loads_without_cwd_dependency() {
-        // include_str! is resolved at compile time — this test confirms
-        // the config builds and fields are populated regardless of CWD.
         let cfg = Config::lab_default();
         assert!(!cfg.host.is_empty());
         assert!(cfg.port > 0);
