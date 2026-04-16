@@ -94,7 +94,7 @@ fn impersonate_and_run(command: &str) -> anyhow::Result<u32> {
             Pipes::{ConnectNamedPipe, CreateNamedPipeW, ImpersonateNamedPipeClient,
                     PIPE_TYPE_BYTE, PIPE_WAIT},
             Threading::{
-                CreateProcessWithTokenW, GetCurrentProcess, OpenProcessToken,
+                CreateProcessWithTokenW, GetCurrentThread, OpenThreadToken,
                 CREATE_NEW_CONSOLE, LOGON_WITH_PROFILE, PROCESS_INFORMATION, STARTUPINFOW,
             },
         },
@@ -131,10 +131,10 @@ fn impersonate_and_run(command: &str) -> anyhow::Result<u32> {
         }
 
         let mut imp_tok: windows_sys::Win32::Foundation::HANDLE = 0;
-        if OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &mut imp_tok) == 0 {
+        if OpenThreadToken(GetCurrentThread(), TOKEN_ALL_ACCESS, 0, &mut imp_tok) == 0 {
             RevertToSelf();
             CloseHandle(pipe);
-            anyhow::bail!("OpenProcessToken failed");
+            anyhow::bail!("OpenThreadToken failed");
         }
 
         let mut prim_tok: windows_sys::Win32::Foundation::HANDLE = 0;
