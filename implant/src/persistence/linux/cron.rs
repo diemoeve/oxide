@@ -50,7 +50,7 @@ fn read_crontab() -> String {
 
 fn write_crontab(content: &str) -> anyhow::Result<()> {
     if content.trim().is_empty() {
-        // crontab -r exits 1 if no crontab exists — treat as non-fatal no-op.
+        // crontab -r exits 1 if no crontab exists; treat as non-fatal no-op.
         let _ = Command::new("crontab").arg("-r").status();
         return Ok(());
     }

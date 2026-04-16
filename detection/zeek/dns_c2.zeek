@@ -1,4 +1,4 @@
-##! DNS C2 detection — thresholds from jbaggs/anomalous-dns (code-confirmed).
+##! DNS C2 detection: thresholds from jbaggs/anomalous-dns (code-confirmed).
 ##! query FQDN > 90 chars | unique subdomains > 8/hr | TXT response > 544 bytes
 ##! oxide tunes to ~79 chars, <8 subdomains/hr at steady state.
 

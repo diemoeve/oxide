@@ -25,7 +25,7 @@ fn unit_content(binary_path: &Path) -> String {
 }
 
 fn systemd_user_available() -> bool {
-    // /run/systemd/private is the SYSTEM socket (PID 1) — not a user session indicator.
+    // /run/systemd/private is the SYSTEM socket (PID 1), not a user session indicator.
     // The user session socket is at /run/user/<uid>/systemd/private.
     let uid = nix::unistd::getuid().as_raw();
     std::path::Path::new(&format!("/run/user/{}/systemd/private", uid)).exists()

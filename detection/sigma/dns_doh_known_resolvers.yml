@@ -5,7 +5,7 @@ description: |
   HTTPS to known DoH resolvers. Defenders can only block DoH at network boundary by IP.
   oxide doh-transport: lab targets panel /dns-query; production targets 1.1.1.1/8.8.8.8.
   JA4: rustls TLS 1.3 has 6 possible JA4 fingerprints (3 suites, 6 orderings).
-  JA3 is broken since Chrome randomized ciphers early 2023 — use JA4 exclusively.
+  JA3 is broken since Chrome randomized ciphers early 2023; use JA4 exclusively.
 references:
   - https://www.rfc-editor.org/rfc/rfc8484
 author: diemoeve

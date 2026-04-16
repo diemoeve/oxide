@@ -1,4 +1,4 @@
-//! DNS C2 transport — TXT polling, encrypt-then-fragment, gamma jitter.
+//! DNS C2 transport: TXT polling, encrypt-then-fragment, gamma jitter.
 //!
 //! Query: {session_6hex}{total_2hex}{idx_2hex}.{BASE32NOPAD_≤55chars}.c2.{domain}
 //! Heartbeat: {session_6hex}0000.hb.c2.{domain}  (total=00 idx=00)
