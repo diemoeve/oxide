@@ -35,6 +35,15 @@ nix = { version = "0.29", features = ["user", "process"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.52"
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
+    "Win32_System_Services",
+    "Win32_System_Threading",
+] }
 dinvk = { version = "0.4", optional = true }
 uwd = { version = "0.3", optional = true }
 windows = { version = "0.57", features = [

