@@ -1,0 +1,35 @@
+title: Named Pipe Created for Token Impersonation (PrintSpoofer/GodPotato Pattern)
+id: b1f7a5e4-6378-4055-9267-oxide019pip1
+status: experimental
+description: >
+  Detects named pipe creation by a non-system process for token impersonation
+  attacks (PrintSpoofer, GodPotato pattern). Correlate Sysmon Events 17 and 18
+  with Event 4624 LogonType 9 to confirm the ImpersonateNamedPipeClient chain.
+  Requires SeImpersonatePrivilege — common on IIS, MSSQL, service accounts.
+date: 2026/04/16
+author: diemoeve
+references:
+  - https://itm4n.github.io/printspoofer-abusing-impersonate-privileges/
+  - https://bherunda.medium.com/hunting-named-pipe-token-impersonation-abuse-573dcca36ae0
+tags:
+  - attack.privilege_escalation
+  - attack.t1134.001
+logsource:
+  product: windows
+  category: pipe_created
+detection:
+  selection:
+    PipeName|contains: 'pipe'
+  filter_system:
+    Image|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+  filter_legit_pipes:
+    PipeName|contains:
+      - '\lsass'
+      - '\ntsvcs'
+      - '\wkssvc'
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Security tools and debugging utilities creating named pipes
+level: medium
