@@ -1,0 +1,40 @@
+title: DNS-over-HTTPS to Known Public Resolver IPs
+id: b2c3d4e5-f6a7-8901-bcde-f01234567891
+status: experimental
+description: |
+  HTTPS to known DoH resolvers. Defenders can only block DoH at network boundary by IP.
+  oxide doh-transport: lab targets panel /dns-query; production targets 1.1.1.1/8.8.8.8.
+  JA4: rustls TLS 1.3 has 6 possible JA4 fingerprints (3 suites, 6 orderings).
+  JA3 is broken since Chrome randomized ciphers early 2023 — use JA4 exclusively.
+references:
+  - https://www.rfc-editor.org/rfc/rfc8484
+author: diemoeve
+date: 2026-04-16
+tags:
+  - attack.command-and-control
+  - attack.t1071.004
+  - attack.defense-evasion
+  - attack.t1090
+logsource:
+  category: network_connection
+  product: windows
+detection:
+  doh_resolvers:
+    DestinationIp:
+      - '1.1.1.1'
+      - '1.0.0.1'
+      - '8.8.8.8'
+      - '8.8.4.4'
+      - '9.9.9.9'
+    DestinationPort: 443
+  filter_browsers:
+    Image|endswith:
+      - '\chrome.exe'
+      - '\firefox.exe'
+      - '\msedge.exe'
+      - '\brave.exe'
+  condition: doh_resolvers and not filter_browsers
+falsepositives:
+  - System-level DoH via Windows Settings or policy
+  - Endpoint security using DoH for reputation lookups
+level: low

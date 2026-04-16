@@ -1,0 +1,32 @@
+title: DNS Tunneling — Long Subdomain Labels
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+status: experimental
+description: |
+  DNS queries with subdomain encoding pattern consistent with data-over-DNS C2.
+  Pattern: {10-char metadata}.{BASE32 chunk}.c2.domain
+  Untuned tools: iodine ~189 chars, dnscat2 ~220 chars.
+  oxide dns-transport tunes to ~79 chars; this rule catches mid-tier and untuned tools.
+  JA3 is broken since Chrome randomized cipher order in early 2023. Use JA4.
+references:
+  - https://github.com/jbaggs/anomalous-dns
+author: diemoeve
+date: 2026-04-16
+tags:
+  - attack.command-and-control
+  - attack.t1071.004
+  - attack.exfiltration
+  - attack.t1048.003
+logsource:
+  category: dns
+detection:
+  long_label:
+    query|re: '[a-z0-9]{10}\.[a-z2-7]{30,}'
+  filter_legit:
+    query|contains:
+      - '_dmarc.'
+      - '_domainkey.'
+      - 'autodiscover.'
+  condition: long_label and not filter_legit
+falsepositives:
+  - Custom internal DNS automation with encoded tokens
+level: medium
