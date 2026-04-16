@@ -2,9 +2,6 @@
 //! Lab: panel's /dns-query endpoint (TLS-pinned, same cert).
 //! Production: public DoH resolver + real domain + NS delegation.
 
-// Transport wiring (T9) not yet complete; suppress until then.
-#![allow(dead_code)]
-
 use anyhow::{Context, Result};
 use data_encoding::BASE32_NOPAD;
 use flate2::{write::GzEncoder, Compression};

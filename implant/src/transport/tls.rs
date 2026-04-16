@@ -90,6 +90,7 @@ impl TlsTransport {
     }
 }
 
+/// Certificate verifier used by TLS and DoH transports.
 #[derive(Debug)]
 pub(crate) struct PinnedCertVerifier {
     pub expected_hash: [u8; 32],

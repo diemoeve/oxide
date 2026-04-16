@@ -12,12 +12,16 @@ pub enum TransportMode {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub host: String,
+    // Used only by TLS and DoH transports; suppress unused-field lint for DNS build.
+    #[allow(dead_code)]
     pub port: u16,
     pub psk: String,
     pub salt: Vec<u8>,
+    // Used only by TLS and DoH transports; suppress unused-field lint for DNS build.
+    #[allow(dead_code)]
     pub cert_hash: [u8; 32],
-    // Fields below are read in transport/http.rs under --features http-transport.
-    // Suppress rather than cfg-gate (cfg on struct fields changes layout between builds).
+    // Fields below are read by http/dns/doh transports. Suppress rather than cfg-gate
+    // (cfg on struct fields changes layout between builds).
     #[allow(dead_code)]
     pub transport: TransportMode,
     #[allow(dead_code)]

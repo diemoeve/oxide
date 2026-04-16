@@ -205,6 +205,12 @@ async fn async_main() -> anyhow::Result<()> {
     loop {
         dbg_log!("[*] Connecting to {}:{}...", config.host, config.port);
 
+        #[cfg(feature = "dns-transport")]
+        let result = transport::dns::DnsTransport::run(&config, &dispatch, &chain).await;
+
+        #[cfg(feature = "doh-transport")]
+        let result = transport::doh::DohTransport::run(&config, &dispatch, &chain).await;
+
         #[cfg(feature = "http-transport")]
         let result = match transport::HttpTransport::connect(&config).await {
             Ok(mut t) => {
@@ -215,7 +221,7 @@ async fn async_main() -> anyhow::Result<()> {
             Err(e) => Err(e),
         };
 
-        #[cfg(not(feature = "http-transport"))]
+        #[cfg(not(any(feature = "dns-transport", feature = "doh-transport", feature = "http-transport")))]
         let result = match transport::TlsTransport::connect(&config).await {
             Ok(mut t) => {
                 dbg_log!("[+] TLS handshake complete");

