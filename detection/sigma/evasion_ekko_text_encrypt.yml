@@ -1,0 +1,43 @@
+title: Oxide — RC4 Sleep Obfuscation via SystemFunction032 (.text Section Encryption)
+id: a3c7d1e2-5f44-4b88-c291-oxide022slp01
+status: experimental
+description: >
+  Detects Ekko-style sleep obfuscation where a process encrypts its own .text
+  section using SystemFunction032 (Advapi32 RC4) between beacon check-ins.
+  Sequence: NtProtectVirtualMemory (RX→RW on own .text page) + SystemFunction032
+  call + NtProtectVirtualMemory (RW→RX restore) + WaitForSingleObjectEx/Sleep.
+  Oxide v0.8 uses this pattern to defeat PE-sieve, Moneta, and BeaconEye scans
+  during sleep windows.
+author: diemoeve
+date: 2026/04/16
+references:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://github.com/Cracked5pider/Ekko
+tags:
+  - attack.defense_evasion
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_tampering
+  definition: >
+    Requires EDR with in-process VirtualProtect telemetry (e.g. Microsoft Defender
+    for Endpoint ProcessMemoryProtectionChange event or CrowdStrike VirtualProtect
+    telemetry). Standard Sysmon does not capture same-process VirtualProtect calls.
+detection:
+  selection_protect:
+    EventType: ProcessMemoryProtectionChange
+    NewProtection|contains:
+      - 'PAGE_READWRITE'
+      - '0x4'
+    OldProtection|contains:
+      - 'PAGE_EXECUTE_READ'
+      - '0x20'
+  filter_known_legitimate:
+    Image|endswith:
+      - '\System32\svchost.exe'
+      - '\System32\lsass.exe'
+  condition: selection_protect and not filter_known_legitimate
+falsepositives:
+  - JIT compilers (V8, CLR) that legitimately flip .text permissions
+  - Security products running self-integrity checks
+level: high
