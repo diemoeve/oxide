@@ -4,12 +4,19 @@
 //! Enable via: cargo build --features edr-evasion
 //!
 //! Init order matters:
-//!   1. sandbox CPU checks     — pure asm, zero Win32 calls
 //!
-//!      1b. sandbox debugger checks — pure PEB reads, zero Win32 calls
-//!   2. etw::bypass()          — kill user-mode ETW before any calls generate events
-//!   3. amsi::bypass()         — VEH registration invisible now that ETW is dead
-//!   4. sandbox registry       — file I/O telemetry suppressed by dead ETW
+//!   1. sandbox CPU checks — pure asm, zero Win32 calls
+//!   2. sandbox debugger checks — pure PEB reads
+//!   3. etw::bypass() — kill user-mode ETW before any calls generate events
+//!   4. amsi::bypass() — VEH registration invisible now that ETW is dead
+//!   5. sandbox registry — file I/O telemetry suppressed by dead ETW
+//!
+//! Call stack spoofing (uwd feature):
+//!   --features uwd enables the `uwd` crate dependency (S22). Compile-time clean.
+//!   Runtime status: UNTESTED — dinvk and uwd both resolve ntdll unwind tables;
+//!   S17 documented a trampoline instrumentation conflict at runtime on Windows.
+//!   Lab verification needed before enabling uwd::Unwind calls in init().
+//!   Blocker: deferred from S17, S18, S19, and S22. See OXIDE_SESSIONS.md.
 
 #[cfg(feature = "edr-evasion")]
 pub mod peb;
