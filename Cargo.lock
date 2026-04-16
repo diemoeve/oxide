@@ -1055,6 +1055,7 @@ dependencies = [
  "uuid",
  "uwd",
  "windows",
+ "windows-core",
  "winreg",
 ]
 

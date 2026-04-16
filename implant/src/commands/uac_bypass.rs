@@ -75,37 +75,43 @@ fn to_wide_null(s: &str) -> Vec<u16> {
 
 #[cfg(target_os = "windows")]
 fn shell_exec_elevated(command: &str) -> Result<()> {
-    use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_LOCAL_SERVER,
-        COINIT_APARTMENTTHREADED,
-    };
+    use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
 
     let (file, args_str) = split_cmd(command);
-
     let file_wide = to_wide_null(&file);
     let args_wide = to_wide_null(&args_str);
-    let empty_wide = to_wide_null("");
-    let verb_wide = to_wide_null("runas");
 
     unsafe {
-        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-
-        let obj: ICMLuaUtil =
-            CoCreateInstance(&CMSTPLUA_CLSID, None, CLSCTX_LOCAL_SERVER)
-                .map_err(|e| anyhow::anyhow!("CoCreateInstance failed: {e}"))?;
-
-        obj.ShellExec(
-            windows::core::PCWSTR(file_wide.as_ptr()),
-            windows::core::PCWSTR(args_wide.as_ptr()),
-            windows::core::PCWSTR(empty_wide.as_ptr()),
-            windows::core::PCWSTR(verb_wide.as_ptr()),
-            1u32,
-        )
-        .ok()
-        .map_err(|e| anyhow::anyhow!("ICMLuaUtil::ShellExec failed: {e}"))?;
-
-        CoUninitialize();
+        let init_hr = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let result = shell_exec_inner(&file_wide, &args_wide);
+        // S_OK (0) or S_FALSE (1) = init succeeded, must uninit.
+        // RPC_E_CHANGED_MODE = COM already init'd differently, must NOT uninit.
+        if init_hr.is_ok() {
+            CoUninitialize();
+        }
+        result
     }
+}
+
+#[cfg(target_os = "windows")]
+unsafe fn shell_exec_inner(prog_w: &[u16], args_w: &[u16]) -> Result<()> {
+    use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_LOCAL_SERVER};
+
+    let empty_w = to_wide_null("");
+    let verb_w = to_wide_null("runas");
+
+    let obj: ICMLuaUtil = CoCreateInstance(&CMSTPLUA_CLSID, None, CLSCTX_LOCAL_SERVER)
+        .map_err(|e| anyhow::anyhow!("CoCreateInstance failed: {e}"))?;
+
+    obj.ShellExec(
+        windows::core::PCWSTR(prog_w.as_ptr()),
+        windows::core::PCWSTR(args_w.as_ptr()),
+        windows::core::PCWSTR(empty_w.as_ptr()),
+        windows::core::PCWSTR(verb_w.as_ptr()),
+        1u32,
+    )
+    .ok()
+    .map_err(|e| anyhow::anyhow!("ICMLuaUtil::ShellExec failed: {e}"))?;
 
     Ok(())
 }
