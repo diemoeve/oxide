@@ -8,6 +8,7 @@
 //!
 //! Detection: detection/sigma/stealth_ppid_mismatch.yml.
 
+#[cfg(all(target_os = "windows", feature = "stealth"))]
 const GUARD_VAR: &str = "__PROC_INIT";
 
 /// Spoof parent to explorer.exe on first run. No-op if guard var is set.
@@ -151,8 +152,10 @@ pub unsafe fn spoof_if_needed() {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #[cfg(all(target_os = "windows", feature = "stealth"))]
+    use super::GUARD_VAR;
 
+    #[cfg(all(target_os = "windows", feature = "stealth"))]
     #[test]
     fn guard_var_has_no_toolname() {
         assert!(!GUARD_VAR.is_empty());

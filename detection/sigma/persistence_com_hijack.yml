@@ -1,0 +1,59 @@
+title: Oxide — COM Object Hijacking via HKCU CLSID InprocServer32
+id: d6f1a4e5-9c44-4e77-f394-oxide022com01
+status: experimental
+description: >
+  Detects COM hijacking for persistence (T1546.015). An adversary writes a DLL
+  path to HKCU\SOFTWARE\Classes\CLSID\{GUID}\InprocServer32 — overriding the
+  HKLM entry without elevation. Any process that subsequently instantiates the
+  targeted COM object loads the attacker DLL. HKCU takes priority over HKLM in
+  HKCR resolution (architectural Windows invariant).
+  Oxide uses CLSIDs {54E211B6} (directmanipulation, triggers in Chrome/Edge) and
+  {0358B920} (CacheTask/wininet, triggers at logon). DLL is loaded via DllMain
+  which spawns a CreateThread payload before returning TRUE to the host process.
+author: diemoeve
+date: 2026/04/16
+references:
+  - https://attack.mitre.org/techniques/T1546/015/
+  - https://specterops.io/blog/2025/05/28/revisiting-com-hijacking/
+  - https://pentestlab.blog/2020/05/20/persistence-com-hijacking/
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1546.015
+logsource:
+  product: windows
+  category: registry_set
+  definition: >
+    Requires Sysmon Event ID 13 (RegistryValueSet) or equivalent EDR registry
+    telemetry. Monitoring HKCU\SOFTWARE\Classes\CLSID is key — HKLM changes
+    require elevation and are much rarer from attacker perspective.
+detection:
+  selection:
+    EventType: SetValue
+    TargetObject|contains:
+      - '\SOFTWARE\Classes\CLSID\'
+    TargetObject|endswith:
+      - '\InprocServer32\(Default)'
+      - '\InprocServer32\'
+  filter_system_paths:
+    Details|startswith:
+      - 'C:\Windows\'
+      - 'C:\Program Files\'
+      - 'C:\Program Files (x86)\'
+  filter_known_installers:
+    Image|endswith:
+      - '\msiexec.exe'
+      - '\regsvr32.exe'
+      - '\setup.exe'
+  # High-value CLSIDs known to be targeted (SpecterOps 2025, PentestLab)
+  selection_known_clsid:
+    TargetObject|contains:
+      - '{54E211B6-3650-4F75-8334-FA359598E1C5}'   # directmanipulation (Chrome/Edge/Teams)
+      - '{0358B920-0AC7-461F-98F4-58E32CD89148}'   # CacheTask (logon persistence)
+      - '{89565275-A714-4a43-912E-978B935EDCCC}'   # RemcosRAT / AsyncRAT (VT telemetry)
+  condition: (selection and not filter_system_paths and not filter_known_installers) or selection_known_clsid
+falsepositives:
+  - Legitimate per-user COM registration by enterprise software (rare)
+  - Development tools registering COM servers in HKCU for testing
+  - Some browser extensions that register COM objects
+level: high

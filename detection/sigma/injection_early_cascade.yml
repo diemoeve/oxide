@@ -1,0 +1,56 @@
+title: Oxide — Early Cascade Injection via g_pfnSE_DllLoaded Hijack
+id: c5e9f2d3-8b33-4d66-e293-oxide022ec001
+status: experimental
+description: >
+  Detects Early Cascade Injection (Outflank, Oct 2024). A process creates a
+  child in CREATE_SUSPENDED state, writes shellcode to its memory, overwrites
+  g_pfnSE_DllLoaded in the child's ntdll .mrdata section, then resumes the
+  thread. g_pfnSE_DllLoaded fires before any EDR DLL loads — the stub executes
+  in the clean process, self-queues an APC on the main thread via
+  NtQueueApcThread, then returns. The APC drains during early process init
+  (NtTestAlert). No cross-process APC is queued — this evades Early Bird
+  detections.
+  Key difference from Early Bird APC: no NtQueueApcThread cross-process call;
+  the APC is self-queued by the stub running inside the suspended process.
+author: diemoeve
+date: 2026/04/16
+references:
+  - https://attack.mitre.org/techniques/T1055/003/
+  - https://attack.mitre.org/techniques/T1055/004/
+  - https://www.outflank.nl/blog/2024/10/15/introducing-early-cascade-injection-from-windows-process-creation-to-stealthy-injection/
+  - https://github.com/joe-butler2/rs_early_cascade
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1055.003
+  - attack.t1055.004
+logsource:
+  product: windows
+  category: process_access
+  definition: >
+    Requires Sysmon Event ID 10 (ProcessAccess) with broad access mask coverage,
+    AND Sysmon Event ID 1 (ProcessCreate) for the parent/child correlation.
+detection:
+  # Correlation: a non-system process spawns a child (EID 1, CREATE_SUSPENDED)
+  # and immediately opens it with VM_WRITE access (EID 10).
+  selection_access:
+    EventID: 10
+    GrantedAccess|contains:
+      - '0x1fffff'   # PROCESS_ALL_ACCESS
+      - '0x1010'     # PROCESS_VM_WRITE | PROCESS_VM_OPERATION
+      - '0x38'       # VM_WRITE + VM_READ + VM_OP
+    TargetImage|endswith:
+      - '\notepad.exe'
+      - '\RuntimeBroker.exe'
+      - '\svchost.exe'
+  filter_legitimate_debuggers:
+    SourceImage|endswith:
+      - '\devenv.exe'
+      - '\windbg.exe'
+      - '\x64dbg.exe'
+      - '\ollydbg.exe'
+  condition: selection_access and not filter_legitimate_debuggers
+falsepositives:
+  - Legitimate process injection tools in authorized pen-test engagements
+  - Some system monitoring software that monitors process memory
+level: high

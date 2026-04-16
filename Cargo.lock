@@ -1031,6 +1031,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxide-dll"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "oxide-implant"
 version = "0.1.0"
 dependencies = [
