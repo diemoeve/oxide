@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "implant"]
+members = ["shared", "implant", "dll"]
 resolver = "2"
 
 [profile.release]

