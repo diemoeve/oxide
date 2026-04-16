@@ -48,6 +48,7 @@ class CryptoContext:
         return self._direction_prefix + struct.pack("<Q", counter)
 
 
+
 class StatelessCrypto:
     """AES-256-GCM with random nonces. No replay protection. Use over HTTPS only."""
 
@@ -70,3 +71,20 @@ class StatelessCrypto:
             raise ValueError("data too short")
         nonce, ct = data[:NONCE_SIZE], data[NONCE_SIZE:]
         return AESGCM(self._key).decrypt(nonce, ct, None)
+
+
+def derive_key(psk: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=AES_KEY_SIZE, salt=salt,
+                     iterations=PBKDF2_ITERATIONS)
+    return kdf.derive(psk.encode())
+
+
+def encrypt_stateless(key: bytes, plaintext: bytes) -> bytes:
+    nonce = _os.urandom(NONCE_SIZE)
+    return nonce + AESGCM(key).encrypt(nonce, plaintext, None)
+
+
+def decrypt_stateless(key: bytes, data: bytes) -> bytes:
+    if len(data) < NONCE_SIZE + 16:
+        raise ValueError("data too short")
+    return AESGCM(key).decrypt(data[:NONCE_SIZE], data[NONCE_SIZE:], None)

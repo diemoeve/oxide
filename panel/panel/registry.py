@@ -30,6 +30,8 @@ class Registry:
     def __init__(self):
         self._clients: dict[str, ClientConnection] = {}
         self._lock = asyncio.Lock()
+        self._dns_queues: dict[str, list] = {}
+        self._dns_sessions: dict[str, dict] = {}
 
     async def register(self, conn: ClientConnection):
         """Register a new client connection."""
@@ -74,3 +76,13 @@ class Registry:
     def connected_count(self) -> int:
         """Number of connected clients."""
         return len(self._clients)
+
+    def register_dns_session(self, session_id: str, bot_data: dict) -> None:
+        self._dns_sessions[session_id] = bot_data
+
+    def queue_dns_command(self, session_id: str, cmd: dict) -> None:
+        self._dns_queues.setdefault(session_id, []).append(cmd)
+
+    def pop_dns_command(self, session_id: str) -> dict | None:
+        q = self._dns_queues.get(session_id, [])
+        return q.pop(0) if q else None
