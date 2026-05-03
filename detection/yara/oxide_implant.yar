@@ -11,22 +11,6 @@
  * MITRE ATT&CK: T1059.004, T1071.001, T1573.001
  */
 
-private rule is_elf {
-    condition:
-        uint32(0) == 0x464c457f
-}
-
-private rule is_pe {
-    condition:
-        uint16(0) == 0x5a4d
-}
-
-private rule is_macho {
-    condition:
-        uint32(0) == 0xfeedfacf or
-        uint32(0) == 0xfeedface
-}
-
 rule oxide_implant_linux {
     meta:
         description = "Oxide RAT implant — Linux ELF binary (post-S12)"
@@ -49,8 +33,9 @@ rule oxide_implant_linux {
         $beacon_ep  = "/c2/beacon" ascii
 
     condition:
-        is_elf and filesize < 20MB and
-        (
+        uint32(0) == 0x464c457f 
+        and filesize < 20MB 
+        and (
             3 of ($cmd*) or
             2 of ($pers*) or
             ($crypto1 and $beacon_ep and 2 of ($cmd*)) or
@@ -86,8 +71,9 @@ rule oxide_implant_windows {
         $pkt2       = "command_type" ascii
 
     condition:
-        is_pe and filesize < 20MB and
-        (
+        uint16(0) == 0x5a4d
+        and filesize < 20MB 
+        and (
             (4 of ($cmd*) and $crypto1) or
             ($beacon_ep and 3 of ($cmd*)) or
             ($beacon_ep and $crypto1 and $pkt1 and $pkt2) or
@@ -113,8 +99,12 @@ rule oxide_implant_macos {
         $crypto1    = "data too short for decryption" ascii
 
     condition:
-        is_macho and filesize < 20MB and
-        (
+        ( 
+            uint32(0) == 0xfeedfacf or
+            uint32(0) == 0xfeedface 
+        ) 
+        and filesize < 20MB 
+        and (
             ($label and $sni) or
             ($la_path and $macos_path and 1 of ($cmd*)) or
             ($label and $log1 and $crypto1) or
